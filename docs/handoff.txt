@@ -1,4 +1,4 @@
-Project: album-filter (Chrome extension starter)
+Project: table-filter (Chrome extension starter)
 
 Goal of this handoff:
 Provide a reusable extension scaffold that can be moved to a new repository and extended.
@@ -19,7 +19,7 @@ Description workflow (Chrome Web Store):
 
 Packaging commands:
 - `npm run package`
-  - Creates `dist/album-filter-<version>.zip`.
+  - Creates `dist/table-filter-<version>.zip`.
 - `npm run package:patch`
   - Increments patch version in `manifest.json`, then packages.
 

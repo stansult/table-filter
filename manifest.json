@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Album Filter",
+  "name": "Table Filter",
   "version": "0.1.4",
   "description": "Add in-page text filtering and auto-loading controls to long album pages.",
   "permissions": [
@@ -8,7 +8,7 @@
     "scripting"
   ],
   "action": {
-    "default_title": "Album Filter"
+    "default_title": "Table Filter"
   },
   "icons": {
     "16": "icon16.png",

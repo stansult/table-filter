@@ -32,9 +32,9 @@ chrome.action.onClicked.addListener(tab => {
     {
       target: { tabId },
       func: () => {
-        const panelId = 'album-filter-panel';
-        const styleId = 'album-filter-style';
-        const hiddenClass = 'album-filter-card-hidden';
+        const panelId = 'table-filter-panel';
+        const styleId = 'table-filter-style';
+        const hiddenClass = 'table-filter-card-hidden';
 
         const app = window.__albumFilterApp;
         if (app && typeof app.destroy === 'function') {
@@ -65,7 +65,7 @@ chrome.action.onClicked.addListener(tab => {
         if (state === 'closed') {
           chrome.tabs.sendMessage(tabId, {
             action: 'showToast',
-            text: 'Album Filter closed.',
+            text: 'Table Filter closed.',
             level: 'expired',
             duration: 1600
           }, () => {
@@ -73,11 +73,11 @@ chrome.action.onClicked.addListener(tab => {
             chrome.scripting.executeScript({
               target: { tabId },
               func: () => {
-                const existing = document.getElementById('album-filter-toast');
+                const existing = document.getElementById('table-filter-toast');
                 if (existing) existing.remove();
                 const toast = document.createElement('div');
-                toast.id = 'album-filter-toast';
-                toast.textContent = 'Album Filter closed.';
+                toast.id = 'table-filter-toast';
+                toast.textContent = 'Table Filter closed.';
                 Object.assign(toast.style, {
                   position: 'fixed',
                   top: '14px',

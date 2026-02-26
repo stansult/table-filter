@@ -16,9 +16,9 @@ function closeInjectedPanelIfOpen(tabId, callback) {
     {
       target: { tabId },
       func: () => {
-        const panelId = 'album-filter-panel';
-        const styleId = 'album-filter-style';
-        const hiddenClass = 'album-filter-card-hidden';
+        const panelId = 'table-filter-panel';
+        const styleId = 'table-filter-style';
+        const hiddenClass = 'table-filter-card-hidden';
 
         const app = window.__albumFilterApp;
         if (app && typeof app.destroy === 'function') {

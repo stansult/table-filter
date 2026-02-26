@@ -131,7 +131,7 @@ function getConfig() {
     columns,
     trickyPercent,
     style: controls.nameStyle.value,
-    seed: controls.seed.value.trim() || 'album-filter-poc',
+    seed: controls.seed.value.trim() || 'table-filter-poc',
     includeCreate: controls.includeCreate.checked,
     showMenu: controls.showMenu.checked
   };

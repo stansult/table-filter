@@ -1,10 +1,10 @@
 {
-  "name": "album-filter",
+  "name": "table-filter",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "clean": "rm -rf dist",
-    "package": "rm -f *.zip && mkdir -p dist && rm -f dist/*.zip && VERSION=$(node -p \"require('./manifest.json').version\") && zip -j \"dist/album-filter-${VERSION}.zip\" manifest.json background.js content.js popup.html popup.js icon16.png icon32.png icon48.png icon128.png && if [ ! -f dist/.description-last ] || ! cmp -s docs/description.txt dist/.description-last; then cp docs/description.txt dist/description-to-upload.txt && cp docs/description.txt dist/.description-last; fi",
-    "package:patch": "node -e \"const fs=require('fs');const p='manifest.json';const m=JSON.parse(fs.readFileSync(p,'utf8'));const parts=m.version.split('.').map(n=>parseInt(n,10)||0);while(parts.length<3)parts.push(0);parts[2]+=1;m.version=parts.join('.');fs.writeFileSync(p,JSON.stringify(m,null,2)+'\\n');\" && rm -f *.zip && mkdir -p dist && rm -f dist/*.zip && VERSION=$(node -p \"require('./manifest.json').version\") && zip -j \"dist/album-filter-${VERSION}.zip\" manifest.json background.js content.js popup.html popup.js icon16.png icon32.png icon48.png icon128.png && if [ ! -f dist/.description-last ] || ! cmp -s docs/description.txt dist/.description-last; then cp docs/description.txt dist/description-to-upload.txt && cp docs/description.txt dist/.description-last; fi"
+    "package": "rm -f *.zip && mkdir -p dist && rm -f dist/*.zip && VERSION=$(node -p \"require('./manifest.json').version\") && zip -j \"dist/table-filter-${VERSION}.zip\" manifest.json background.js content.js popup.html popup.js icon16.png icon32.png icon48.png icon128.png && if [ ! -f dist/.description-last ] || ! cmp -s docs/description.txt dist/.description-last; then cp docs/description.txt dist/description-to-upload.txt && cp docs/description.txt dist/.description-last; fi",
+    "package:patch": "node -e \"const fs=require('fs');const p='manifest.json';const m=JSON.parse(fs.readFileSync(p,'utf8'));const parts=m.version.split('.').map(n=>parseInt(n,10)||0);while(parts.length<3)parts.push(0);parts[2]+=1;m.version=parts.join('.');fs.writeFileSync(p,JSON.stringify(m,null,2)+'\\n');\" && rm -f *.zip && mkdir -p dist && rm -f dist/*.zip && VERSION=$(node -p \"require('./manifest.json').version\") && zip -j \"dist/table-filter-${VERSION}.zip\" manifest.json background.js content.js popup.html popup.js icon16.png icon32.png icon48.png icon128.png && if [ ! -f dist/.description-last ] || ! cmp -s docs/description.txt dist/.description-last; then cp docs/description.txt dist/description-to-upload.txt && cp docs/description.txt dist/.description-last; fi"
   }
 }

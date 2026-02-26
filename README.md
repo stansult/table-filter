@@ -1,17 +1,17 @@
-# Album Filter (Chrome Extension)
+# Table Filter (Chrome Extension)
 
-**Album Filter** is a Chrome extension that adds in-page text filtering for long, paginated album lists.
+**Table Filter** is a Chrome extension that adds in-page text filtering for long, paginated album lists.
 
-It currently supports Facebook photo albums, where you can try it right now. You can also try it on our test page: [Album Filter Playground](https://album-filter.stansult.com).
+It currently supports Facebook photo albums, where you can try it right now. You can also try it on our test page: [Table Filter Playground](https://table-filter.stansult.com).
 
 ## Why
 
 On long album lists, browser page search (`Cmd/Ctrl + F`) only works on albums currently loaded in the DOM.
-Album Filter is designed to make finding albums faster by adding filtering controls directly in the page flow.
+Table Filter is designed to make finding albums faster by adding filtering controls directly in the page flow.
 
 ## How It Works
 
-- Click the extension icon to open/close the in-page Album Filter panel.
+- Click the extension icon to open/close the in-page Table Filter panel.
 - Type a query to filter loaded albums by title.
 - Click `Auto-load` to keep loading additional album batches, then `Stop` to stop.
 - Click `Rescan` to re-read albums already present in the DOM.
@@ -28,7 +28,7 @@ Example:
 
 ### While Filtering Is Active
 
-- An inline notice appears near the Albums area (`Album Filter: active...`).
+- An inline notice appears near the Albums area (`Table Filter: active...`).
 - Newly loaded non-matching cards may briefly appear dim before being hidden.
 - While `Auto-load` is active, the panel shows a warning that page scroll/jumps may occur.
 
@@ -49,7 +49,7 @@ Example:
 ### Public version
 
 Install public version from Chrome Web Store:
-<a href="https://chromewebstore.google.com/detail/hflbafejehpoclienjonceojnnlckahm"><img src="icon.svg" width="15" hspace="6" alt="Album Filter extension in Chrome Web Store">Album Filter</a>.
+<a href="https://chromewebstore.google.com/detail/hflbafejehpoclienjonceojnnlckahm"><img src="icon.svg" width="15" hspace="6" alt="Table Filter extension in Chrome Web Store">Table Filter</a>.
 
 The Web Store listing may lag behind the latest code due to review time.
 
@@ -66,13 +66,13 @@ The Web Store listing may lag behind the latest code due to review time.
 - Create upload zip: `npm run package`
 - Bump patch + package: `npm run package:patch`
 
-#### Album Filter Playground
+#### Table Filter Playground
 
-Use [Album Filter Playground](https://album-filter.stansult.com) to test long-list and auto-load behavior locally.
+Use [Table Filter Playground](https://table-filter.stansult.com) to test long-list and auto-load behavior locally.
 
 ## Notes
 
-- Album Filter is not affiliated with or endorsed by Meta/Facebook.
+- Table Filter is not affiliated with or endorsed by Meta/Facebook.
 - This project focuses on user-triggered, in-browser filtering workflows.
 - There is currently no options page; behavior is controlled from the in-page panel.
 - Privacy policy: [`PRIVACY.md`](PRIVACY.md)

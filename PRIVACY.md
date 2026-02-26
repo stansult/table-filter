@@ -1,8 +1,8 @@
-# Album Filter Privacy Policy
+# Table Filter Privacy Policy
 
 Last updated: February 11, 2026
 
-Album Filter processes album page content locally in your browser to provide in-page filtering and related UI behavior.
+Table Filter processes album page content locally in your browser to provide in-page filtering and related UI behavior.
 
 ## What data is accessed
 
@@ -20,11 +20,11 @@ Album Filter processes album page content locally in your browser to provide in-
 
 ## Data handling
 
-- Album Filter does not transmit user data to our servers.
-- Album Filter does not sell or transfer user data to third parties.
-- Album Filter does not use data for advertising, profiling, credit, or lending purposes.
+- Table Filter does not transmit user data to our servers.
+- Table Filter does not sell or transfer user data to third parties.
+- Table Filter does not use data for advertising, profiling, credit, or lending purposes.
 
 ## Contact
 
 For privacy questions, open an issue in this repository:
-https://github.com/stansult/album-filter/issues
+https://github.com/stansult/table-filter/issues

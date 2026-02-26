@@ -1,12 +1,12 @@
 (() => {
-  const PANEL_ID = 'album-filter-panel';
-  const STYLE_ID = 'album-filter-style';
-  const NOTICE_ID = 'album-filter-inline-notice';
-  const MATCHED_CLASS = 'album-filter-card-hidden';
-  const MATCH_CLASS = 'album-filter-card-match';
-  const SLOT_MATCH_CLASS = 'album-filter-slot-match';
-  const PENDING_CLASS = 'album-filter-card-pending';
-  const NON_ALBUM_HIDDEN_CLASS = 'album-filter-non-album-hidden';
+  const PANEL_ID = 'table-filter-panel';
+  const STYLE_ID = 'table-filter-style';
+  const NOTICE_ID = 'table-filter-inline-notice';
+  const MATCHED_CLASS = 'table-filter-card-hidden';
+  const MATCH_CLASS = 'table-filter-card-match';
+  const SLOT_MATCH_CLASS = 'table-filter-slot-match';
+  const PENDING_CLASS = 'table-filter-card-pending';
+  const NON_ALBUM_HIDDEN_CLASS = 'table-filter-non-album-hidden';
   const SUPPORTED_PATH = /\/photos_albums(?:[/?#]|$)/i;
   const APP_VERSION = '1.1.0';
   const MAX_STAGNANT_CYCLES = 3;
@@ -248,11 +248,11 @@
       duration = 1800,
       level = 'info'
     } = options;
-    const existing = document.getElementById('album-filter-toast');
+    const existing = document.getElementById('table-filter-toast');
     if (existing) existing.remove();
 
     const toast = document.createElement('div');
-    toast.id = 'album-filter-toast';
+    toast.id = 'table-filter-toast';
     toast.textContent = text;
     const panel = document.getElementById(PANEL_ID);
     const toastRight = panel ? `${panel.offsetWidth + 28}px` : '14px';
@@ -364,7 +364,7 @@
     panel.id = PANEL_ID;
     panel.innerHTML = `
       <div class="af-head">
-        <div class="af-title">Album Filter</div>
+        <div class="af-title">Table Filter</div>
         <button type="button" class="af-close" aria-label="Close panel">×</button>
       </div>
       <div class="af-body">
@@ -437,12 +437,12 @@
 
       const hidden = Math.max(0, loaded - shown);
       const text = hidden === 0
-        ? 'Album Filter: active.'
+        ? 'Table Filter: active.'
         : shown === 0
-          ? `Album Filter: active. No matching albums in loaded list (0 of ${loaded} loaded).`
+          ? `Table Filter: active. No matching albums in loaded list (0 of ${loaded} loaded).`
           : state.autoScanActive
-            ? 'Album Filter: active. Some albums are hidden.'
-            : `Album Filter: active. Some albums are hidden (showing ${shown} of ${loaded} loaded).`;
+            ? 'Table Filter: active. Some albums are hidden.'
+            : `Table Filter: active. Some albums are hidden (showing ${shown} of ${loaded} loaded).`;
 
       let notice = document.getElementById(NOTICE_ID);
       if (!notice) {
@@ -793,7 +793,7 @@
       panel.remove();
       delete window.__albumFilterApp;
       removeInlineNotice();
-      showToast('Album Filter closed.', { level: 'expired', duration: 1600 });
+      showToast('Table Filter closed.', { level: 'expired', duration: 1600 });
     }
 
     const closeBtn = panel.querySelector('.af-close');
@@ -909,7 +909,7 @@
     if (existingApp) {
       if (existingApp.__version === APP_VERSION && typeof existingApp.reactivate === 'function') {
         existingApp.reactivate();
-        showToast('Album Filter ready.', { level: 'info' });
+        showToast('Table Filter ready.', { level: 'info' });
         return;
       }
       if (typeof existingApp.destroy === 'function') {
@@ -923,7 +923,7 @@
     }
 
     window.__albumFilterApp = createApp();
-    showToast('Album Filter injected.', { level: 'success' });
+    showToast('Table Filter injected.', { level: 'success' });
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

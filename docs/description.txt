@@ -1,14 +1,14 @@
-Album Filter adds in-page text filtering for long, paginated album lists.
+Table Filter adds in-page text filtering for long, paginated album lists.
 
 Chrome Web Store: https://chromewebstore.google.com/detail/hflbafejehpoclienjonceojnnlckahm
 
 Why it helps:
 - Large album lists are hard to navigate
 - Browser Find (Cmd/Ctrl + F) only works for content currently loaded
-- Album Filter is built to make album discovery faster in long lists
+- Table Filter is built to make album discovery faster in long lists
 
 How it works:
-- Click the extension icon to open/close the in-page Album Filter panel
+- Click the extension icon to open/close the in-page Table Filter panel
 - Type a query to filter loaded albums by title
 - Click Auto-load to keep loading additional album batches, then Stop to stop
 - Click Rescan to re-read albums already present in the page DOM
@@ -19,7 +19,7 @@ Query behavior:
 - Quoted query ("..." or '...'): exact phrase match in title
 
 While filtering is active:
-- An inline notice appears near the Albums area ("Album Filter: active...")
+- An inline notice appears near the Albums area ("Table Filter: active...")
 - Newly loaded non-matching cards may briefly appear dim before being hidden
 - While Auto-load is active, the panel warns that page scroll/jumps may occur
 
@@ -36,4 +36,4 @@ Privacy:
 - No user data is transmitted to our servers.
 - No user data is sold or shared with third parties.
 
-Album Filter is not affiliated with or endorsed by Meta/Facebook.
+Table Filter is not affiliated with or endorsed by Meta/Facebook.
