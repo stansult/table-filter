@@ -452,6 +452,29 @@
     const originalSummaryText = summaryNode ? summaryNode.textContent : '';
     const summaryMatch = (originalSummaryText || '').match(/(\d+)\s*\/\s*(\d+)/);
     const sourceTotal = summaryMatch ? Number(summaryMatch[2]) : 0;
+    const heroTitle = Array.from(document.querySelectorAll('div, h1, h2'))
+      .find(node => normalizeText(node.textContent || '') === 'My Shows') || null;
+    const heroLayout = heroTitle ? heroTitle.parentElement : null;
+    const heroCards = heroTitle && heroTitle.nextElementSibling && heroTitle.nextElementSibling.tagName === 'DIV'
+      ? heroTitle.nextElementSibling
+      : null;
+    const heroSection = heroTitle ? heroTitle.closest('.bg-black') : null;
+    const heroBottomStrip = heroSection
+      ? Array.from(heroSection.querySelectorAll('div')).find(node =>
+        node.classList.contains('absolute') &&
+        node.classList.contains('bottom-0') &&
+        node.classList.contains('rounded-t-xl') &&
+        node.classList.contains('bg-background-200')) || null
+      : null;
+    const heroRelativeWrap = heroBottomStrip ? heroBottomStrip.parentElement : null;
+    const heroState = {
+      cardsDisplay: heroCards ? heroCards.style.display : '',
+      bottomStripDisplay: heroBottomStrip ? heroBottomStrip.style.display : '',
+      layoutGap: heroLayout ? heroLayout.style.gap : '',
+      layoutPaddingTop: heroLayout ? heroLayout.style.paddingTop : '',
+      layoutPaddingBottom: heroLayout ? heroLayout.style.paddingBottom : '',
+      relativeMarginBottom: heroRelativeWrap ? heroRelativeWrap.style.marginBottom : ''
+    };
     const controls = [searchInput, searchClearBtn, statusButton, opSelect, valueInput, clearBtn, rescanBtn];
     const sortCleanup = [];
     let syntheticThead = null;
@@ -474,6 +497,39 @@
         return;
       }
       summaryNode.textContent = `${visible}/${total} TV Shows`;
+    }
+
+    function applyHeroCollapse() {
+      if (!heroTitle || !heroLayout) return;
+      if (heroCards) {
+        heroCards.style.display = 'none';
+      }
+      if (heroBottomStrip) {
+        heroBottomStrip.style.display = 'none';
+      }
+      if (heroRelativeWrap) {
+        heroRelativeWrap.style.marginBottom = '0';
+      }
+      heroLayout.style.gap = '0';
+      heroLayout.style.paddingTop = '1.25rem';
+      heroLayout.style.paddingBottom = '1rem';
+    }
+
+    function restoreHeroLayout() {
+      if (heroCards) {
+        heroCards.style.display = heroState.cardsDisplay;
+      }
+      if (heroBottomStrip) {
+        heroBottomStrip.style.display = heroState.bottomStripDisplay;
+      }
+      if (heroRelativeWrap) {
+        heroRelativeWrap.style.marginBottom = heroState.relativeMarginBottom;
+      }
+      if (heroLayout) {
+        heroLayout.style.gap = heroState.layoutGap;
+        heroLayout.style.paddingTop = heroState.layoutPaddingTop;
+        heroLayout.style.paddingBottom = heroState.layoutPaddingBottom;
+      }
     }
 
     function resetCache() {
@@ -952,6 +1008,7 @@
       node.dataset.tfHiddenByApp = '1';
       node.dataset.tfPrevDisplay = hostChildDisplays[index] || '';
     });
+    applyHeroCollapse();
     if (viewButton) {
       viewButton.style.display = 'none';
     }
@@ -1011,6 +1068,7 @@
         if (viewButton) {
           viewButton.style.display = viewButtonDisplay;
         }
+        restoreHeroLayout();
         const style = document.getElementById(STYLE_ID);
         if (style) style.remove();
       },
