@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Table Filter",
   "version": "0.1.4",
-  "description": "Add in-page text filtering and auto-loading controls to long album pages.",
+  "description": "Filter HTML tables directly on the current page.",
   "permissions": [
     "activeTab",
     "scripting"

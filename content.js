@@ -1,272 +1,38 @@
 (() => {
-  const PANEL_ID = 'table-filter-panel';
+  const PANEL_ID = 'table-filter-pending-inline';
   const STYLE_ID = 'table-filter-style';
-  const NOTICE_ID = 'table-filter-inline-notice';
-  const MATCHED_CLASS = 'table-filter-card-hidden';
-  const MATCH_CLASS = 'table-filter-card-match';
-  const SLOT_MATCH_CLASS = 'table-filter-slot-match';
-  const PENDING_CLASS = 'table-filter-card-pending';
-  const NON_ALBUM_HIDDEN_CLASS = 'table-filter-non-album-hidden';
-  const SUPPORTED_PATH = /\/photos_albums(?:[/?#]|$)/i;
-  const APP_VERSION = '1.1.0';
-  const MAX_STAGNANT_CYCLES = 3;
-  const PENDING_HIDE_DELAY_MS = 160;
-  const TOAST_INFO_BG = 'rgba(20, 40, 70, 0.75)';
-  const TOAST_SUCCESS_BG = 'rgba(20, 70, 40, 0.75)';
-  const TOAST_EXPIRED_BG = 'rgba(60, 60, 60, 0.75)';
-  const TOAST_ERROR_BG = 'rgba(120, 30, 30, 0.85)';
+  const HIDDEN_CLASS = 'table-filter-row-hidden';
+  const APP_KEY = '__tableFilterApp';
+  const APP_VERSION = '4.2.0';
+  const TOAST_ID = 'table-filter-toast';
+  const TOAST_ACTION = 'showToast';
+  const FILTER_OFF_TITLE = 'Pending filter: off';
+  const FILTER_INVALID_TITLE = 'Pending filter: invalid number';
+  const OPERATORS = ['=', '!=', '>=', '<=', '>', '<'];
+  const SCAN_INTERVAL_MS = 420;
+  const SCAN_STAGNANT_LIMIT = 14;
+  const SCAN_MAX_CYCLES = 520;
+  const SCAN_STEP_RATIO = 0.85;
 
-  function normalize(text) {
-    return String(text || '').replace(/\s+/g, ' ').trim().toLowerCase();
-  }
-
-  function parseQuery(rawQuery) {
-    const trimmed = String(rawQuery || '').trim();
-    const doubleQuoted = trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"');
-    const singleQuoted = trimmed.length >= 2 && trimmed.startsWith("'") && trimmed.endsWith("'");
-    if (doubleQuoted || singleQuoted) {
-      return {
-        mode: 'phrase',
-        phrase: normalize(trimmed.slice(1, -1))
-      };
-    }
-    const norm = normalize(trimmed);
-    const tokens = norm ? norm.split(' ').filter(Boolean) : [];
-    return {
-      mode: 'tokens',
-      tokens
-    };
-  }
-
-  function isSupportedPage() {
-    const isFacebookAlbums = window.location.hostname.includes('facebook.com')
-      && SUPPORTED_PATH.test(window.location.pathname + window.location.search);
-
-    if (isFacebookAlbums) return true;
-
-    // Allow local/hosted test playground usage.
-    return !!document.querySelector('[data-af-album-grid]');
-  }
-
-  function isTestPlaygroundPage() {
-    return !!document.querySelector('[data-af-album-grid]');
-  }
-
-  function ensureStyles() {
-    if (document.getElementById(STYLE_ID)) return;
-    const style = document.createElement('style');
-    style.id = STYLE_ID;
-    style.textContent = `
-      #${PANEL_ID} {
-        position: fixed;
-        top: 16px;
-        right: 16px;
-        z-index: 2147483647;
-        width: 320px;
-        background: #ffffff;
-        color: #111827;
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
-        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
-        font-size: 13px;
-        line-height: 1.35;
-        overflow: hidden;
-      }
-      #${PANEL_ID} .af-head {
-        background: #f8fafc;
-        border-bottom: 1px solid #e5e7eb;
-        padding: 8px 10px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-      }
-      #${PANEL_ID} .af-title {
-        font-weight: 700;
-        color: #1f2937;
-      }
-      #${PANEL_ID} .af-close {
-        border: 1px solid #d1d5db;
-        background: #fff;
-        border-radius: 6px;
-        width: 24px;
-        height: 24px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        line-height: 1;
-        padding: 0;
-        font-size: 16px;
-        font-weight: 600;
-      }
-      #${PANEL_ID} .af-body {
-        padding: 10px;
-        display: grid;
-        gap: 8px;
-      }
-      #${PANEL_ID} .af-input-wrap {
-        position: relative;
-      }
-      #${PANEL_ID} .af-input {
-        width: 100%;
-        box-sizing: border-box;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        padding: 7px 30px 7px 9px;
-        font-size: 13px;
-      }
-      #${PANEL_ID} .af-input-clear {
-        position: absolute;
-        top: 50%;
-        right: 8px;
-        transform: translateY(-50%);
-        border: 0;
-        background: transparent;
-        color: #64748b;
-        font-size: 16px;
-        line-height: 1;
-        width: 20px;
-        height: 20px;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-      }
-      #${PANEL_ID} .af-input-clear:hover {
-        background: #e2e8f0;
-        color: #334155;
-      }
-      #${PANEL_ID} .af-input-clear:disabled {
-        cursor: default;
-        opacity: 0.35;
-      }
-      #${PANEL_ID} .af-row {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 6px;
-      }
-      #${PANEL_ID} .af-btn {
-        border: 1px solid #c7d2fe;
-        background: #eef2ff;
-        color: #111827;
-        border-radius: 7px;
-        padding: 6px 4px;
-        font-size: 11px;
-        cursor: pointer;
-        white-space: nowrap;
-      }
-      #${PANEL_ID} .af-btn:hover {
-        background: #e0e7ff;
-      }
-      #${PANEL_ID} .af-btn:disabled {
-        cursor: not-allowed;
-        opacity: 0.55;
-      }
-      #${PANEL_ID} .af-btn[aria-pressed="true"] {
-        background: #dbeafe;
-        border-color: #60a5fa;
-        box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
-      }
-      #${PANEL_ID} .af-btn.secondary {
-        background: #f8fafc;
-        border-color: #d1d5db;
-      }
-      #${PANEL_ID} .af-btn.secondary:hover {
-        background: #f1f5f9;
-      }
-      #${PANEL_ID} .af-status {
-        color: #334155;
-        font-size: 14px;
-        font-weight: 600;
-      }
-      #${PANEL_ID} .af-status.warn {
-        color: #b45309;
-      }
-      #${PANEL_ID} .af-help {
-        color: #64748b;
-        font-size: 11px;
-        white-space: pre-line;
-      }
-      #${PANEL_ID} .af-auto-warn {
-        display: none;
-        padding: 7px 9px;
-        border: 1px solid #fecaca;
-        border-radius: 8px;
-        background: #fef2f2;
-        color: #991b1b;
-        font-size: 12px;
-        line-height: 1.3;
-      }
-      #${PANEL_ID} .af-auto-warn.show {
-        display: block;
-      }
-      .${MATCHED_CLASS} {
-        display: none !important;
-      }
-      .${NON_ALBUM_HIDDEN_CLASS} {
-        display: none !important;
-      }
-      .${PENDING_CLASS} {
-        opacity: 0.2 !important;
-      }
-      [data-af-layout-root][data-af-compact="true"] {
-        display: grid !important;
-        grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)) !important;
-        gap: 0 !important;
-        align-items: start !important;
-      }
-      [data-af-layout-root][data-af-compact="true"][data-af-query-active="true"] > * {
-        opacity: 0.2 !important;
-      }
-      [data-af-layout-root][data-af-compact="true"][data-af-query-active="true"] > .${SLOT_MATCH_CLASS} {
-        opacity: 1 !important;
-      }
-      [data-af-layout-root][data-af-compact="true"] > * {
-        min-width: 0 !important;
-        width: auto !important;
-      }
-      #${NOTICE_ID} {
-        margin: 8px 0 10px;
-        padding: 8px 10px;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        background: #f8fafc;
-        color: #334155;
-        font-size: 14px;
-        font-weight: 500;
-        line-height: 1.35;
-      }
-    `;
-    document.documentElement.appendChild(style);
-  }
-
-  function showToast(text, options = {}) {
-    const {
-      duration = 1800,
-      level = 'info'
-    } = options;
-    const existing = document.getElementById('table-filter-toast');
+  function showToast(text, level = 'info', duration = 1800) {
+    const existing = document.getElementById(TOAST_ID);
     if (existing) existing.remove();
 
     const toast = document.createElement('div');
-    toast.id = 'table-filter-toast';
+    toast.id = TOAST_ID;
     toast.textContent = text;
-    const panel = document.getElementById(PANEL_ID);
-    const toastRight = panel ? `${panel.offsetWidth + 28}px` : '14px';
     const background = level === 'success'
-      ? TOAST_SUCCESS_BG
-      : level === 'expired'
-        ? TOAST_EXPIRED_BG
-        : level === 'error'
-          ? TOAST_ERROR_BG
-          : TOAST_INFO_BG;
+      ? 'rgba(20, 70, 40, 0.8)'
+      : level === 'error'
+        ? 'rgba(120, 30, 30, 0.88)'
+        : level === 'expired'
+          ? 'rgba(60, 60, 60, 0.78)'
+          : 'rgba(20, 40, 70, 0.78)';
+
     Object.assign(toast.style, {
       position: 'fixed',
       top: '14px',
-      right: toastRight,
+      right: '14px',
       zIndex: '999999',
       padding: '8px 12px',
       borderRadius: '4px',
@@ -286,652 +52,595 @@
     });
     setTimeout(() => {
       toast.style.opacity = '0';
-      setTimeout(() => toast.remove(), 200);
+      setTimeout(() => toast.remove(), 220);
     }, duration);
   }
 
-  function isCreateAnchor(anchor) {
-    const href = anchor.getAttribute('href') || '';
-    return href.includes('/media/set/create/');
+  function ensureStyles() {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = `
+      .${HIDDEN_CLASS} {
+        display: none !important;
+      }
+      #${PANEL_ID} {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      #${PANEL_ID} .tf-inline-label {
+        color: hsl(var(--muted-foreground, 215 16% 47%));
+        font-size: 0.875rem;
+        white-space: nowrap;
+      }
+      #${PANEL_ID} .tf-inline-status {
+        color: hsl(var(--muted-foreground, 215 16% 47%));
+        font-size: 0.75rem;
+        white-space: nowrap;
+      }
+      #${PANEL_ID} .tf-inline-value {
+        width: 84px;
+      }
+    `;
+    document.documentElement.appendChild(style);
   }
 
-  function isAlbumAnchor(anchor) {
-    const href = anchor.getAttribute('href') || '';
-    return href.includes('/media/set/?set=') || href.includes('/media/set/?set=') || href.includes('/media/set/?set');
-  }
-
-  function readTitle(anchor) {
-    const titleNodes = anchor.querySelectorAll('span[dir="auto"], div[dir="auto"]');
-    for (const node of titleNodes) {
-      const text = (node.textContent || '').trim();
-      if (!text) continue;
-      if (/^\d+\s+items?$/i.test(text)) continue;
-      if (/^create album$/i.test(text)) continue;
-      return text;
+  function getHeaderCells(table) {
+    if (table.tHead && table.tHead.rows && table.tHead.rows[0]) {
+      return Array.from(table.tHead.rows[0].cells || []);
     }
-    return (anchor.textContent || '').replace(/\s+/g, ' ').trim();
+    const firstRow = table.rows && table.rows[0];
+    return firstRow ? Array.from(firstRow.cells || []) : [];
   }
 
-  function readCount(anchor) {
-    const nodes = anchor.querySelectorAll('span[dir="auto"], div[dir="auto"]');
-    for (const node of nodes) {
-      const text = (node.textContent || '').trim();
-      if (/^\d+\s+items?$/i.test(text)) return text;
+  function getPendingColumnIndex(table) {
+    const headers = getHeaderCells(table);
+    for (let i = 0; i < headers.length; i += 1) {
+      const cell = headers[i];
+      const key = (cell?.getAttribute('data-adri') || '').toLowerCase();
+      if (key === 'pending') return i;
+      const text = (cell?.textContent || '').trim().toLowerCase();
+      if (text === 'pending') return i;
     }
+    return -1;
+  }
+
+  function findTargetTable() {
+    const tables = Array.from(document.querySelectorAll('table'));
+    for (const table of tables) {
+      if (getPendingColumnIndex(table) >= 0) return table;
+    }
+    return null;
+  }
+
+  function getDataRows(table) {
+    if (!table) return [];
+    if (table.tBodies && table.tBodies.length) {
+      const rows = [];
+      Array.from(table.tBodies).forEach(body => {
+        if (body.dataset.tfSynthetic === '1') return;
+        rows.push(...Array.from(body.rows || []));
+      });
+      return rows;
+    }
+    return Array.from(table.rows || []).slice(1);
+  }
+
+  function normalizeText(text) {
+    return String(text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function parsePending(row, pendingColumnIndex) {
+    const cell = row?.cells?.[pendingColumnIndex];
+    const text = (cell?.textContent || '').trim();
+    const match = text.match(/-?\d+/);
+    return match ? Number(match[0]) : null;
+  }
+
+  function getRowKey(row) {
+    const href = row?.querySelector('a[href]')?.getAttribute('href');
+    if (href) return `href:${href}`;
     return '';
   }
 
-  function findCardContainer(anchor) {
-    const byWidth = anchor.closest('div[style*="min-width: 168px"], div[style*="min-width:168px"]');
-    if (byWidth) return byWidth;
+  function buildRowEntry(row, pendingColumnIndex) {
+    const pending = parsePending(row, pendingColumnIndex);
+    if (pending == null || Number.isNaN(pending)) return null;
 
-    let current = anchor;
-    for (let i = 0; i < 8 && current; i += 1) {
-      current = current.parentElement;
-      if (!current) break;
-      if (current.querySelector('img') && /items?/i.test(current.textContent || '')) {
-        return current;
-      }
+    const image = row?.querySelector('img');
+    const cells = Array.from(row.cells || []).map(cell => {
+      if (cell.querySelector('img')) return '';
+      return normalizeText(cell.textContent || '');
+    });
+    const href = row?.querySelector('a[href]')?.getAttribute('href') || '';
+    const key = getRowKey(row) || `row:${cells.join('|')}`;
+    if (!key || key === 'row:') return null;
+
+    return {
+      key,
+      pending,
+      cells,
+      href,
+      imageSrc: image?.getAttribute('src') || '',
+      imageAlt: normalizeText(image?.getAttribute('alt') || cells[1] || '')
+    };
+  }
+
+  function getScrollContainer(table) {
+    const wrap = table.closest('div.w-full.overflow-auto');
+    if (wrap && wrap.scrollHeight > wrap.clientHeight + 10) return wrap;
+    return document.scrollingElement || document.documentElement;
+  }
+
+  function compare(value, operator, target) {
+    if (value == null || Number.isNaN(value)) return false;
+    if (operator === '=') return value === target;
+    if (operator === '!=') return value !== target;
+    if (operator === '>=') return value >= target;
+    if (operator === '<=') return value <= target;
+    if (operator === '>') return value > target;
+    if (operator === '<') return value < target;
+    return true;
+  }
+
+  function clearHiddenRows(table) {
+    getDataRows(table).forEach(row => row.classList.remove(HIDDEN_CLASS));
+  }
+
+  function findToolbarHost(table) {
+    const card = table.closest('[data-slot="card"]');
+    const scope = card?.parentElement || card || document.body;
+    const inputs = Array.from(scope.querySelectorAll('input[placeholder*="Filter TV Shows" i], input[placeholder*="TV Shows" i], input[placeholder*="Filter" i]'));
+    const primaryInput = inputs.find(input => {
+      if (table.contains(input)) return false;
+      if (!input || !input.isConnected) return false;
+      const rect = input.getBoundingClientRect();
+      return !!input.offsetParent && rect.width > 0 && rect.height > 0;
+    }) || null;
+
+    if (primaryInput) {
+      const row = primaryInput.parentElement;
+      if (row) return row;
     }
-
-    return anchor;
+    return null;
   }
 
   function createApp() {
-    const state = {
-      query: '',
-      albums: [],
-      autoScanActive: false,
-      autoScanTimer: null,
-      testPageAutoButton: null,
-      stagnantCycles: 0,
-      lastScanCount: 0,
-      observer: null,
-      rescanTimer: null,
-      layoutRoot: null,
-      knownAlbumKeys: new Set(),
-      stickyMatchedKeys: new Set(),
-      lastQuerySignature: '',
-      pendingHideTimers: new Map()
-    };
+    const table = findTargetTable();
+    if (!table) {
+      showToast('No table with Pending column found on this page.', 'error');
+      return null;
+    }
+
+    const pendingColumnIndex = getPendingColumnIndex(table);
+    if (pendingColumnIndex < 0) {
+      showToast('Pending column not found.', 'error');
+      return null;
+    }
 
     ensureStyles();
 
+    if (!findToolbarHost(table)) {
+      showToast('Filter row not found.', 'error');
+      return null;
+    }
+    const buttonClass = 'inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-2';
+    const inputClass = 'h-8 rounded-md border border-input bg-background px-2 text-sm';
     let panel = document.getElementById(PANEL_ID);
     if (panel) panel.remove();
 
-    panel = document.createElement('section');
+    panel = document.createElement('div');
     panel.id = PANEL_ID;
-    panel.innerHTML = `
-      <div class="af-head">
-        <div class="af-title">Table Filter</div>
-        <button type="button" class="af-close" aria-label="Close panel">×</button>
-      </div>
-      <div class="af-body">
-        <div class="af-input-wrap">
-          <input class="af-input" type="text" placeholder="Filter albums by title...">
-          <button type="button" class="af-input-clear" aria-label="Clear filter">×</button>
-        </div>
-        <div class="af-row">
-          <button type="button" class="af-btn" data-action="scan">Rescan</button>
-          <button type="button" class="af-btn" data-action="auto">Auto-load</button>
-          <button type="button" class="af-btn secondary" data-action="stop">Stop</button>
-        </div>
-        <div class="af-auto-warn" aria-live="polite">Warning: Auto-load may scroll/jump the page to trigger more loading.</div>
-        <div class="af-help">- Rescan refreshes albums already on the page.
-- Auto-load fetches more pages.</div>
-        <div class="af-status" aria-live="polite">Ready</div>
-      </div>
-    `;
+    panel.className = 'flex items-center gap-2';
+    panel.style.display = 'inline-flex';
+    panel.style.alignItems = 'center';
+    panel.style.gap = '8px';
+    panel.style.flexWrap = 'nowrap';
+    panel.style.position = 'fixed';
+    panel.style.zIndex = '999998';
+    panel.style.background = 'transparent';
 
-    document.body.appendChild(panel);
+    const label = document.createElement('span');
+    label.className = 'tf-inline-label';
+    label.textContent = 'Unwatched';
+    label.style.fontSize = '12px';
+    label.style.whiteSpace = 'nowrap';
 
-    const input = panel.querySelector('.af-input');
-    const status = panel.querySelector('.af-status');
-    const scanBtn = panel.querySelector('button[data-action="scan"]');
-    const autoBtn = panel.querySelector('button[data-action="auto"]');
-    const stopBtn = panel.querySelector('button[data-action="stop"]');
-    const clearBtn = panel.querySelector('.af-input-clear');
-    const autoWarn = panel.querySelector('.af-auto-warn');
+    const opSelect = document.createElement('select');
+    opSelect.className = inputClass;
+    opSelect.style.width = '64px';
+    opSelect.style.minWidth = '64px';
+    OPERATORS.forEach(op => {
+      const option = document.createElement('option');
+      option.value = op;
+      option.textContent = op;
+      opSelect.appendChild(option);
+    });
 
-    function syncButtonState() {
-      autoBtn.setAttribute('aria-pressed', state.autoScanActive ? 'true' : 'false');
-      autoBtn.textContent = state.autoScanActive ? 'Auto-loading' : 'Auto-load';
-      stopBtn.disabled = !state.autoScanActive;
-      clearBtn.disabled = !state.query;
-      scanBtn.disabled = false;
-      autoWarn.classList.toggle('show', state.autoScanActive);
-    }
+    const valueInput = document.createElement('input');
+    valueInput.type = 'number';
+    valueInput.step = '1';
+    valueInput.min = '0';
+    valueInput.placeholder = 'value';
+    valueInput.className = `${inputClass} tf-inline-value`;
+    valueInput.style.width = '78px';
+    valueInput.style.minWidth = '78px';
 
-    function stopTestPageAutoIfRunning() {
-      if (!isTestPlaygroundPage()) return;
-      const testAuto = document.getElementById('auto-load');
-      if (!testAuto) return;
-      state.testPageAutoButton = testAuto;
-      if (testAuto.getAttribute('aria-pressed') === 'true') testAuto.click();
-    }
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = buttonClass;
+    clearBtn.textContent = 'x';
+    clearBtn.setAttribute('aria-label', 'Clear pending filter');
+    clearBtn.style.paddingLeft = '0.55rem';
+    clearBtn.style.paddingRight = '0.55rem';
 
-    function setStatus(text, warn) {
-      status.textContent = text;
-      status.classList.toggle('warn', !!warn);
-    }
+    panel.appendChild(label);
+    panel.appendChild(opSelect);
+    panel.appendChild(valueInput);
+    panel.appendChild(clearBtn);
 
-    function removeInlineNotice() {
-      const existing = document.getElementById(NOTICE_ID);
-      if (existing) existing.remove();
-    }
+    const state = {
+      cache: new Map(),
+      scanTimer: null,
+      scanRunning: false,
+      scanComplete: false,
+      datasetKey: `${window.location.pathname}${window.location.search}`,
+      stagnantCycles: 0,
+      cycles: 0,
+      lastCount: 0,
+      restoreScrollTop: 0,
+      restoreWindowY: 0
+    };
+    const originalTbody = table.tBodies?.[0] || null;
+    let syntheticTbody = null;
+    const firstBodyRow = originalTbody?.querySelector('tr');
+    const rowClassName = firstBodyRow?.className || '';
+    const cellClassNames = Array.from(firstBodyRow?.querySelectorAll('td') || []).map(cell => cell.className || '');
+    const defaultCellClassName = cellClassNames[0] || '';
+    const columnCount = Math.max(getHeaderCells(table).length, 1);
 
-    function findNoticeAnchor() {
-      const tablists = Array.from(document.querySelectorAll('[role="tablist"]'));
-      const albumsTabs = tablists.find(node => /albums/i.test(node.textContent || ''));
-      if (albumsTabs) return albumsTabs;
-      if (state.layoutRoot && state.layoutRoot.parentElement) return state.layoutRoot.parentElement;
-      return state.layoutRoot;
-    }
+    function mountPanel() {
+      const refreshedHost = findToolbarHost(table);
+      if (!refreshedHost) return;
 
-    function upsertInlineNotice(hasQuery, shown, loaded) {
-      if (!hasQuery) {
-        removeInlineNotice();
-        return;
+      if (!panel.isConnected || panel.parentElement !== document.body) {
+        document.body.appendChild(panel);
       }
 
-      const hidden = Math.max(0, loaded - shown);
-      const text = hidden === 0
-        ? 'Table Filter: active.'
-        : shown === 0
-          ? `Table Filter: active. No matching albums in loaded list (0 of ${loaded} loaded).`
-          : state.autoScanActive
-            ? 'Table Filter: active. Some albums are hidden.'
-            : `Table Filter: active. Some albums are hidden (showing ${shown} of ${loaded} loaded).`;
-
-      let notice = document.getElementById(NOTICE_ID);
-      if (!notice) {
-        notice = document.createElement('div');
-        notice.id = NOTICE_ID;
-      }
-      if (notice.textContent !== text) {
-        notice.textContent = text;
-      }
-
-      const anchor = findNoticeAnchor();
-      if (anchor && anchor.parentElement) {
-        if (notice.parentElement !== anchor.parentElement || notice.previousElementSibling !== anchor) {
-          anchor.insertAdjacentElement('afterend', notice);
-        }
-      } else if (!notice.parentElement) {
-        document.body.appendChild(notice);
-      }
-    }
-
-    function setQueryActiveMode(enabled) {
-      document.documentElement.setAttribute('data-af-query-active', enabled ? 'true' : 'false');
-      if (!enabled) {
-        document.querySelectorAll(`.${PENDING_CLASS}`).forEach(node => {
-          node.classList.remove(PENDING_CLASS);
+      const visibleButtons = Array.from(refreshedHost.querySelectorAll('button'))
+        .filter(button => {
+          if (table.contains(button)) return false;
+          if (!button.isConnected) return false;
+          const rect = button.getBoundingClientRect();
+          return !!button.offsetParent && rect.width > 0 && rect.height > 0;
         });
-      }
-    }
+      const resetBtn = visibleButtons.find(button => {
+        const text = (button.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        return text.includes('reset');
+      }) || null;
+      const statusBtn = visibleButtons.find(button => {
+        const text = (button.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        return text.includes('status');
+      }) || null;
+      const anchor = resetBtn || visibleButtons[visibleButtons.length - 1] || statusBtn;
 
-    function clearPendingHideTimers() {
-      state.pendingHideTimers.forEach(timerId => {
-        clearTimeout(timerId);
-      });
-      state.pendingHideTimers.clear();
-    }
-
-    function cancelPendingHide(card) {
-      const timerId = state.pendingHideTimers.get(card);
-      if (timerId) {
-        clearTimeout(timerId);
-        state.pendingHideTimers.delete(card);
-      }
-    }
-
-    function schedulePendingHide(card) {
-      if (state.pendingHideTimers.has(card)) return;
-      const timerId = setTimeout(() => {
-        state.pendingHideTimers.delete(card);
-        card.classList.add(MATCHED_CLASS);
-        card.classList.remove(PENDING_CLASS);
-      }, PENDING_HIDE_DELAY_MS);
-      state.pendingHideTimers.set(card, timerId);
-    }
-
-    function hasActiveQuery() {
-      const parsedQuery = parseQuery(state.query);
-      return parsedQuery.mode === 'phrase'
-        ? !!parsedQuery.phrase
-        : parsedQuery.tokens.length > 0;
-    }
-
-    function clearCompactLayout() {
-      if (state.layoutRoot && state.layoutRoot.isConnected) {
-        state.layoutRoot.removeAttribute('data-af-layout-root');
-        state.layoutRoot.removeAttribute('data-af-compact');
-        state.layoutRoot.removeAttribute('data-af-query-active');
-      }
-      removeInlineNotice();
-      document.querySelectorAll(`.${NON_ALBUM_HIDDEN_CLASS}`).forEach(node => {
-        node.classList.remove(NON_ALBUM_HIDDEN_CLASS);
-      });
-      document.querySelectorAll(`.${SLOT_MATCH_CLASS}`).forEach(node => {
-        node.classList.remove(SLOT_MATCH_CLASS);
-      });
-      state.layoutRoot = null;
-    }
-
-    function applySlotHighlighting(hasQuery) {
-      if (!state.layoutRoot || !state.layoutRoot.isConnected) return;
-      state.layoutRoot.setAttribute('data-af-query-active', hasQuery ? 'true' : 'false');
-
-      Array.from(state.layoutRoot.children).forEach(child => {
-        child.classList.remove(SLOT_MATCH_CLASS);
-        if (!hasQuery) return;
-        if (child.classList.contains(NON_ALBUM_HIDDEN_CLASS)) return;
-
-        const hasAlbum = !!child.querySelector('a[href*="/media/set/?set"]');
-        if (!hasAlbum) {
-          child.classList.add(SLOT_MATCH_CLASS);
-          return;
-        }
-
-        const hasMatched = child.classList.contains(MATCH_CLASS)
-          || !!child.querySelector(`.${MATCH_CLASS}`);
-        if (hasMatched) {
-          child.classList.add(SLOT_MATCH_CLASS);
-        }
-      });
-    }
-
-    function detectLayoutRoot() {
-      const counts = new Map();
-      state.albums.forEach(album => {
-        const parent = album.card?.parentElement;
-        if (!parent) return;
-        counts.set(parent, (counts.get(parent) || 0) + 1);
-      });
-      let bestNode = null;
-      let bestCount = 0;
-      counts.forEach((count, node) => {
-        if (count > bestCount) {
-          bestCount = count;
-          bestNode = node;
-        }
-      });
-      if (!bestNode || bestCount < 3) return null;
-      return bestNode;
-    }
-
-    function applyCompactLayout(enabled) {
-      if (isTestPlaygroundPage()) {
-        clearCompactLayout();
+      if (anchor) {
+        const rect = anchor.getBoundingClientRect();
+        const top = rect.top + Math.max(0, Math.round((rect.height - panel.offsetHeight) / 2));
+        panel.style.top = `${Math.max(4, top)}px`;
+        panel.style.left = `${Math.max(4, rect.right + 8)}px`;
         return;
       }
 
-      if (!enabled) {
-        clearCompactLayout();
+      const input = refreshedHost.querySelector('input[placeholder*="Filter TV Shows" i], input[placeholder*="TV Shows" i], input[placeholder*="Filter" i]');
+      if (input) {
+        const rect = input.getBoundingClientRect();
+        panel.style.top = `${Math.max(4, rect.top)}px`;
+        panel.style.left = `${Math.max(4, rect.right + 8)}px`;
         return;
       }
 
-      const root = detectLayoutRoot();
-      if (!root) {
-        clearCompactLayout();
-        return;
-      }
-
-      if (state.layoutRoot && state.layoutRoot !== root) {
-        clearCompactLayout();
-      }
-      state.layoutRoot = root;
-      root.setAttribute('data-af-layout-root', 'true');
-      root.setAttribute('data-af-compact', 'true');
-
-      Array.from(root.children).forEach(child => {
-        const hasAlbum = !!child.querySelector('a[href*="/media/set/?set"]');
-        const isCreate = !!child.querySelector('a[href*="/media/set/create/"]');
-        child.classList.toggle(NON_ALBUM_HIDDEN_CLASS, !hasAlbum && !isCreate);
-      });
-      applySlotHighlighting(enabled);
+      panel.style.top = '-9999px';
+      panel.style.left = '-9999px';
     }
 
-    function setTestScrollLoadGuard(enabled) {
-      if (!isTestPlaygroundPage()) return;
-      const sentinel = document.getElementById('scroll-sentinel');
-      if (!sentinel) return;
-      sentinel.style.display = enabled ? 'none' : '';
+    mountPanel();
+
+    function getDatasetKey() {
+      return `${window.location.pathname}${window.location.search}`;
     }
 
-    function collectAlbums() {
-      const seen = new Set();
-      const entries = [];
-      const anchors = document.querySelectorAll('a[href*="/media/set/"]');
+    function resetCache() {
+      state.cache.clear();
+      state.scanComplete = false;
+      state.datasetKey = getDatasetKey();
+    }
 
-      anchors.forEach(anchor => {
-        if (isCreateAnchor(anchor) || !isAlbumAnchor(anchor)) return;
+    function syncDataset() {
+      const nextKey = getDatasetKey();
+      if (nextKey === state.datasetKey) return;
+      stopScan({ restoreScroll: false });
+      resetCache();
+      restoreOriginalRows();
+    }
 
-        const href = anchor.href || anchor.getAttribute('href') || '';
-        const card = findCardContainer(anchor);
-        const title = readTitle(anchor);
-        const count = readCount(anchor);
-        const key = `${href}::${title}`;
+    function stopScan(options = {}) {
+      const { restoreScroll = true, markComplete = false } = options;
+      if (state.scanTimer) {
+        clearInterval(state.scanTimer);
+        state.scanTimer = null;
+      }
+      if (markComplete) {
+        state.scanComplete = true;
+      }
+      if (state.scanRunning && restoreScroll) {
+        const scroller = getScrollContainer(table);
+        if (scroller === (document.scrollingElement || document.documentElement)) {
+          window.scrollTo({ top: state.restoreWindowY, left: 0, behavior: 'auto' });
+        } else {
+          scroller.scrollTop = state.restoreScrollTop;
+        }
+      }
+      state.scanRunning = false;
+    }
 
-        if (!title || seen.has(key)) return;
-        seen.add(key);
-
-        entries.push({
-          key,
-          href,
-          title,
-          titleNorm: normalize(title),
-          count,
-          card
-        });
+    function captureVisibleRows() {
+      const rows = getDataRows(table);
+      rows.forEach(row => {
+        const entry = buildRowEntry(row, pendingColumnIndex);
+        if (!entry) return;
+        state.cache.set(entry.key, entry);
       });
+    }
 
-      const queryActive = hasActiveQuery();
-      if (queryActive) {
-        entries.forEach(entry => {
-          if (!state.knownAlbumKeys.has(entry.key) && !state.stickyMatchedKeys.has(entry.key)) {
-            entry.card.classList.add(PENDING_CLASS);
+    function restoreOriginalRows() {
+      if (originalTbody) {
+        originalTbody.style.display = '';
+      }
+      if (syntheticTbody && syntheticTbody.parentNode) {
+        syntheticTbody.remove();
+      }
+      syntheticTbody = null;
+    }
+
+    function renderFilteredRows(matches) {
+      if (!originalTbody) return;
+
+      restoreOriginalRows();
+
+      syntheticTbody = document.createElement('tbody');
+      syntheticTbody.dataset.tfSynthetic = '1';
+      syntheticTbody.className = originalTbody.className || '';
+
+      if (!matches.length) {
+        const tr = document.createElement('tr');
+        if (rowClassName) tr.className = rowClassName;
+        const td = document.createElement('td');
+        td.colSpan = columnCount;
+        if (defaultCellClassName) td.className = defaultCellClassName;
+        td.textContent = 'No matching rows';
+        tr.appendChild(td);
+        syntheticTbody.appendChild(tr);
+      } else {
+        matches.forEach(entry => {
+          const tr = document.createElement('tr');
+          if (rowClassName) tr.className = rowClassName;
+
+          for (let i = 0; i < columnCount; i += 1) {
+            const td = document.createElement('td');
+            const cellClassName = cellClassNames[i] || defaultCellClassName;
+            if (cellClassName) td.className = cellClassName;
+            const text = entry.cells[i] || '';
+
+            if (i === 0 && entry.imageSrc) {
+              const img = document.createElement('img');
+              img.src = entry.imageSrc;
+              img.alt = entry.imageAlt || '';
+              img.loading = 'lazy';
+              img.style.display = 'block';
+              img.style.width = '100%';
+              img.style.height = 'auto';
+
+              if (entry.href) {
+                const link = document.createElement('a');
+                link.href = entry.href;
+                link.appendChild(img);
+                td.appendChild(link);
+              } else {
+                td.appendChild(img);
+              }
+            } else if (i === 1 && entry.href) {
+              const link = document.createElement('a');
+              link.href = entry.href;
+              link.textContent = text || '(untitled)';
+              td.appendChild(link);
+            } else {
+              td.textContent = text;
+            }
+
+            tr.appendChild(td);
           }
+
+          syntheticTbody.appendChild(tr);
         });
       }
-      state.knownAlbumKeys = new Set(entries.map(entry => entry.key));
 
-      state.albums = entries;
-      return entries;
+      originalTbody.style.display = 'none';
+      originalTbody.insertAdjacentElement('afterend', syntheticTbody);
+    }
+
+    function maybeStartScan() {
+      if (state.scanRunning || state.scanComplete) return;
+      state.scanRunning = true;
+      state.stagnantCycles = 0;
+      state.cycles = 0;
+      state.lastCount = state.cache.size;
+
+      const scroller = getScrollContainer(table);
+      const pageScroller = document.scrollingElement || document.documentElement;
+      state.restoreWindowY = window.scrollY || window.pageYOffset || 0;
+      state.restoreScrollTop = scroller.scrollTop || 0;
+
+      if (scroller === pageScroller) {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      } else {
+        scroller.scrollTop = 0;
+      }
+
+      state.scanTimer = setInterval(() => {
+        captureVisibleRows();
+        const currentCount = state.cache.size;
+
+        if (currentCount > state.lastCount) {
+          state.stagnantCycles = 0;
+        } else {
+          state.stagnantCycles += 1;
+        }
+        state.lastCount = currentCount;
+        state.cycles += 1;
+
+        if (scroller === pageScroller) {
+          const doc = document.documentElement;
+          const prev = window.scrollY || window.pageYOffset || 0;
+          const maxTop = Math.max(0, doc.scrollHeight - window.innerHeight);
+          const step = Math.max(120, Math.floor(window.innerHeight * SCAN_STEP_RATIO));
+          const targetTop = Math.min(maxTop, prev + step);
+          window.scrollTo({ top: targetTop, left: 0, behavior: 'auto' });
+          const currentTop = window.scrollY || window.pageYOffset || 0;
+          if (currentTop === prev) state.stagnantCycles += 1;
+        } else {
+          const prev = scroller.scrollTop;
+          const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+          const step = Math.max(120, Math.floor(scroller.clientHeight * SCAN_STEP_RATIO));
+          scroller.scrollTop = Math.min(maxTop, prev + step);
+          if (scroller.scrollTop === prev) state.stagnantCycles += 1;
+        }
+
+        if (state.stagnantCycles >= SCAN_STAGNANT_LIMIT || state.cycles >= SCAN_MAX_CYCLES) {
+          stopScan({ restoreScroll: true, markComplete: true });
+          applyFilter();
+        }
+      }, SCAN_INTERVAL_MS);
     }
 
     function applyFilter() {
-      const parsedQuery = parseQuery(state.query);
-      const hasQuery = parsedQuery.mode === 'phrase'
-        ? !!parsedQuery.phrase
-        : parsedQuery.tokens.length > 0;
-      const querySignature = JSON.stringify(parsedQuery);
-      if (querySignature !== state.lastQuerySignature) {
-        state.stickyMatchedKeys.clear();
-        state.lastQuerySignature = querySignature;
-      }
-      let shown = 0;
-      setQueryActiveMode(hasQuery);
-      if (!hasQuery) {
-        clearPendingHideTimers();
+      syncDataset();
+
+      const raw = valueInput.value;
+      if (raw === '' || raw == null) {
+        stopScan({ restoreScroll: false });
+        restoreOriginalRows();
+        clearHiddenRows(table);
+        panel.title = FILTER_OFF_TITLE;
+        return;
       }
 
-      state.albums.forEach(album => {
-        let matches = true;
-        if (parsedQuery.mode === 'phrase') {
-          matches = !!parsedQuery.phrase && album.titleNorm.includes(parsedQuery.phrase);
-        } else if (parsedQuery.tokens.length) {
-          matches = parsedQuery.tokens.every(token => album.titleNorm.includes(token));
-        }
+      const target = Number(raw);
+      if (Number.isNaN(target) || target < 0) {
+        stopScan({ restoreScroll: false });
+        restoreOriginalRows();
+        clearHiddenRows(table);
+        panel.title = FILTER_INVALID_TITLE;
+        return;
+      }
 
-        album.card.classList.toggle(MATCH_CLASS, matches);
-        if (matches || !hasQuery) {
-          cancelPendingHide(album.card);
-          album.card.classList.remove(MATCHED_CLASS);
-          album.card.classList.remove(PENDING_CLASS);
-        } else if (album.card.classList.contains(PENDING_CLASS)) {
-          album.card.classList.remove(MATCHED_CLASS);
-          schedulePendingHide(album.card);
-        } else {
-          cancelPendingHide(album.card);
-          album.card.classList.add(MATCHED_CLASS);
-          album.card.classList.remove(PENDING_CLASS);
-        }
+      const operator = opSelect.value;
 
-        if (matches && hasQuery) {
-          state.stickyMatchedKeys.add(album.key);
-        }
-        if (matches) shown += 1;
-      });
+      captureVisibleRows();
+      maybeStartScan();
 
-      upsertInlineNotice(hasQuery, shown, state.albums.length);
+      if (state.scanRunning) {
+        restoreOriginalRows();
+        clearHiddenRows(table);
+        panel.title = `Pending filter ${operator} ${target}: scanning ${state.cache.size}`;
+        return;
+      }
 
-      setStatus(`Albums loaded: ${state.albums.length} • Showing: ${shown}`);
-      setTestScrollLoadGuard(hasQuery && !state.autoScanActive);
-      applyCompactLayout(hasQuery);
-      applySlotHighlighting(hasQuery);
+      const matches = Array.from(state.cache.values()).filter(entry => compare(entry.pending, operator, target));
+      renderFilteredRows(matches);
+      panel.title = `Pending filter ${operator} ${target}: ${matches.length}/${state.cache.size}`;
     }
 
-    function scanAndFilter() {
-      collectAlbums();
+    const tbody = table.tBodies?.[0] || table;
+    const observer = new MutationObserver(() => {
+      mountPanel();
       applyFilter();
-    }
-
-    function stopAutoScan(reason) {
-      state.autoScanActive = false;
-      state.stagnantCycles = 0;
-      state.lastScanCount = state.albums.length;
-      if (state.autoScanTimer) {
-        clearInterval(state.autoScanTimer);
-        state.autoScanTimer = null;
-      }
-      if (state.testPageAutoButton && state.testPageAutoButton.getAttribute('aria-pressed') === 'true') {
-        state.testPageAutoButton.click();
-      }
-      if (reason) setStatus(reason);
-      syncButtonState();
-    }
-
-    function triggerLoadFallback() {
-      if (isTestPlaygroundPage()) return;
-      const maxTop = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      if (maxTop <= 0) return;
-      window.scrollTo({ top: maxTop, left: 0, behavior: 'auto' });
-    }
-
-    function startAutoScan() {
-      if (state.autoScanActive) return;
-      state.autoScanActive = true;
-      state.stagnantCycles = 0;
-      state.lastScanCount = state.albums.length;
-      setStatus('Auto-loading albums...');
-
-      if (isTestPlaygroundPage()) {
-        const testAuto = document.getElementById('auto-load');
-        if (testAuto) {
-          state.testPageAutoButton = testAuto;
-          if (testAuto.getAttribute('aria-pressed') !== 'true') testAuto.click();
-        }
-      }
-      syncButtonState();
-
-      state.autoScanTimer = setInterval(() => {
-        if (!state.autoScanActive) return;
-
-        scanAndFilter();
-
-        if (state.albums.length > state.lastScanCount) {
-          state.lastScanCount = state.albums.length;
-          state.stagnantCycles = 0;
-          return;
-        }
-
-        if (isTestPlaygroundPage()) {
-          const end = document.querySelector('[data-af-end]');
-          const ended = !!end && !end.classList.contains('hidden');
-          if (ended) {
-            stopAutoScan(`Complete. Loaded ${state.albums.length} albums.`);
-          }
-          return;
-        }
-
-        state.stagnantCycles += 1;
-        if (state.stagnantCycles === 1) {
-          triggerLoadFallback();
-        }
-        if (state.stagnantCycles >= MAX_STAGNANT_CYCLES) {
-          stopAutoScan(`Auto-scan stopped. No new albums after ${state.stagnantCycles} checks.`);
-        }
-      }, 1300);
-    }
-
-    function scheduleRescan() {
-      if (state.rescanTimer) clearTimeout(state.rescanTimer);
-      state.rescanTimer = setTimeout(() => {
-        scanAndFilter();
-      }, 250);
-    }
-
-    function closePanel() {
-      stopAutoScan();
-      if (state.observer) state.observer.disconnect();
-      if (state.rescanTimer) clearTimeout(state.rescanTimer);
-      clearPendingHideTimers();
-      clearCompactLayout();
-      setTestScrollLoadGuard(false);
-      setQueryActiveMode(false);
-      const style = document.getElementById(STYLE_ID);
-      if (style) style.remove();
-      document.querySelectorAll(`.${MATCHED_CLASS}`).forEach(node => {
-        node.classList.remove(MATCHED_CLASS);
-      });
-      document.querySelectorAll(`.${PENDING_CLASS}`).forEach(node => {
-        node.classList.remove(PENDING_CLASS);
-      });
-      panel.remove();
-      delete window.__albumFilterApp;
-      removeInlineNotice();
-      showToast('Table Filter closed.', { level: 'expired', duration: 1600 });
-    }
-
-    const closeBtn = panel.querySelector('.af-close');
-    closeBtn.addEventListener('click', () => {
-      closePanel();
     });
+    observer.observe(tbody, { childList: true, subtree: true });
 
-    panel.addEventListener('click', event => {
-      const target = event.target.closest('button[data-action]');
-      if (!target) return;
+    const hostRoot = table.closest('[data-slot="card"]') || document.body;
+    const hostObserver = new MutationObserver(() => {
+      mountPanel();
+    });
+    hostObserver.observe(hostRoot, { childList: true, subtree: true });
+    window.addEventListener('scroll', mountPanel, true);
+    window.addEventListener('resize', mountPanel);
 
-      const action = target.dataset.action;
-      if (action === 'scan') {
-        scanAndFilter();
-        setStatus(`Refreshed. Albums loaded: ${state.albums.length}`);
-        syncButtonState();
-        return;
+    opSelect.addEventListener('change', applyFilter);
+    valueInput.addEventListener('input', () => {
+      if (valueInput.value !== '' && Number(valueInput.value) < 0) {
+        valueInput.value = '0';
       }
-      if (action === 'auto') {
-        if (state.autoScanActive) {
-          stopAutoScan('Auto-load stopped.');
-        } else {
-          startAutoScan();
-        }
-        return;
-      }
-      if (action === 'stop') {
-        stopAutoScan('Auto-load stopped.');
-        return;
-      }
+      applyFilter();
     });
 
     clearBtn.addEventListener('click', () => {
-      if (!state.query) return;
-      state.query = '';
-      input.value = '';
-      applyFilter();
-      setStatus(`Filter cleared. Albums loaded: ${state.albums.length}`);
-      syncButtonState();
-      input.focus({ preventScroll: true });
+      valueInput.value = '';
+      stopScan({ restoreScroll: false });
+      restoreOriginalRows();
+      clearHiddenRows(table);
+      panel.title = FILTER_OFF_TITLE;
+      valueInput.focus({ preventScroll: true });
     });
 
-    input.addEventListener('input', () => {
-      state.query = input.value || '';
-      applyFilter();
-      syncButtonState();
-    });
-    input.addEventListener('keydown', event => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      closePanel();
-    });
-
-    state.observer = new MutationObserver(() => {
-      if (!state.autoScanActive && hasActiveQuery()) {
-        scheduleRescan();
-        return;
-      }
-      scheduleRescan();
-    });
-
-    state.observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-
-    scanAndFilter();
-    stopTestPageAutoIfRunning();
-    syncButtonState();
-    setTimeout(() => {
-      if (document.body.contains(panel)) input.focus({ preventScroll: true });
-    }, 0);
+    mountPanel();
+    applyFilter();
+    valueInput.focus({ preventScroll: true });
 
     return {
       __version: APP_VERSION,
       destroy() {
-        stopAutoScan();
-        if (state.observer) state.observer.disconnect();
-        if (state.rescanTimer) clearTimeout(state.rescanTimer);
-        clearPendingHideTimers();
-        clearCompactLayout();
-        setTestScrollLoadGuard(false);
-        setQueryActiveMode(false);
+        observer.disconnect();
+        hostObserver.disconnect();
+        window.removeEventListener('scroll', mountPanel, true);
+        window.removeEventListener('resize', mountPanel);
+        stopScan({ restoreScroll: false });
+        restoreOriginalRows();
+        clearHiddenRows(table);
+        if (panel && panel.parentNode) panel.remove();
         const style = document.getElementById(STYLE_ID);
         if (style) style.remove();
-        document.querySelectorAll(`.${MATCHED_CLASS}`).forEach(node => {
-          node.classList.remove(MATCHED_CLASS);
-        });
-        document.querySelectorAll(`.${PENDING_CLASS}`).forEach(node => {
-          node.classList.remove(PENDING_CLASS);
-        });
-        removeInlineNotice();
-        if (panel && panel.parentNode) panel.remove();
       },
       reactivate() {
-        if (!document.body.contains(panel)) {
-          document.body.appendChild(panel);
-        }
-        stopTestPageAutoIfRunning();
-        scanAndFilter();
-        input.focus({ preventScroll: true });
+        mountPanel();
+        valueInput.focus({ preventScroll: true });
       }
     };
   }
 
-  async function run() {
-    if (!isSupportedPage()) {
-      showToast('No supported album list found on this page.', { level: 'error' });
-      return;
-    }
-
-    const existingApp = window.__albumFilterApp;
-    if (existingApp) {
-      if (existingApp.__version === APP_VERSION && typeof existingApp.reactivate === 'function') {
-        existingApp.reactivate();
-        showToast('Table Filter ready.', { level: 'info' });
+  function run() {
+    const existing = window[APP_KEY];
+    if (existing) {
+      if (existing.__version === APP_VERSION && typeof existing.reactivate === 'function') {
+        existing.reactivate();
+        showToast('Pending filter ready.', 'info');
         return;
       }
-      if (typeof existingApp.destroy === 'function') {
-        existingApp.destroy();
-      }
-      const stalePanel = document.getElementById(PANEL_ID);
-      if (stalePanel) stalePanel.remove();
-      const staleStyle = document.getElementById(STYLE_ID);
-      if (staleStyle) staleStyle.remove();
-      delete window.__albumFilterApp;
+      if (typeof existing.destroy === 'function') existing.destroy();
+      delete window[APP_KEY];
     }
 
-    window.__albumFilterApp = createApp();
-    showToast('Table Filter injected.', { level: 'success' });
+    const app = createApp();
+    if (!app) return;
+
+    window[APP_KEY] = app;
+    showToast('Pending filter injected.', 'success');
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (!message || message.action !== 'showToast') return;
-    showToast(message.text || '', {
-      level: message.level || 'info',
-      duration: typeof message.duration === 'number' ? message.duration : 1800
-    });
+    if (!message || message.action !== TOAST_ACTION) return;
+    showToast(message.text || '', message.level || 'info', typeof message.duration === 'number' ? message.duration : 1800);
     sendResponse({ ok: true });
     return true;
   });

@@ -21,9 +21,14 @@
     <!-- Photo content -->
     <g clip-path="url(#photoClip)">
       <rect x="77" y="113" width="334" height="274" rx="32" fill="#E6F0FA"/>
-      <path d="M100 382 L216 258 L300 330 L364 246 L460 382 Z"
-            fill="#8FA3BF"/>
-      <circle cx="190" cy="206" r="22" fill="#F2C98A"/>
+      <rect x="118" y="162" width="252" height="172" rx="16"
+            fill="#FFFFFF"
+            stroke="#8FA3BF"
+            stroke-width="12"/>
+      <line x1="118" y1="220" x2="370" y2="220" stroke="#8FA3BF" stroke-width="10"/>
+      <line x1="118" y1="278" x2="370" y2="278" stroke="#8FA3BF" stroke-width="10"/>
+      <line x1="202" y1="162" x2="202" y2="334" stroke="#8FA3BF" stroke-width="10"/>
+      <line x1="286" y1="162" x2="286" y2="334" stroke="#8FA3BF" stroke-width="10"/>
     </g>
 
     <!-- Enlarged semi-transparent filter -->

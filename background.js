@@ -1,9 +1,14 @@
+const RUN_ACTION = 'run';
+const TOAST_ACTION = 'showToast';
+const REMOVED_TOAST_TEXT = 'Table Filter removed.';
+const NO_ACTIVE_TAB_ERROR = 'No active tab context';
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message || message.action !== 'run') return;
+  if (!message || message.action !== RUN_ACTION) return;
 
   const tabId = message.tabId || sender?.tab?.id;
   if (!tabId) {
-    sendResponse({ ok: false, error: 'No active tab context' });
+    sendResponse({ ok: false, error: NO_ACTIVE_TAB_ERROR });
     return;
   }
 
@@ -34,12 +39,12 @@ chrome.action.onClicked.addListener(tab => {
       func: () => {
         const panelId = 'table-filter-panel';
         const styleId = 'table-filter-style';
-        const hiddenClass = 'table-filter-card-hidden';
-
-        const app = window.__albumFilterApp;
+        const hiddenClass = 'table-filter-row-hidden';
+        const appKey = '__tableFilterApp';
+        const app = window[appKey];
         if (app && typeof app.destroy === 'function') {
           app.destroy();
-          delete window.__albumFilterApp;
+          delete window[appKey];
           return { toggled: 'closed' };
         }
 
@@ -51,7 +56,7 @@ chrome.action.onClicked.addListener(tab => {
           document.querySelectorAll(`.${hiddenClass}`).forEach(node => {
             node.classList.remove(hiddenClass);
           });
-          delete window.__albumFilterApp;
+          delete window[appKey];
           return { toggled: 'closed' };
         }
 
@@ -64,20 +69,21 @@ chrome.action.onClicked.addListener(tab => {
       if (state !== 'open') {
         if (state === 'closed') {
           chrome.tabs.sendMessage(tabId, {
-            action: 'showToast',
-            text: 'Table Filter closed.',
+            action: TOAST_ACTION,
+            text: REMOVED_TOAST_TEXT,
             level: 'expired',
             duration: 1600
           }, () => {
             if (!chrome.runtime.lastError) return;
             chrome.scripting.executeScript({
               target: { tabId },
-              func: () => {
+              args: [REMOVED_TOAST_TEXT],
+              func: removedToastText => {
                 const existing = document.getElementById('table-filter-toast');
                 if (existing) existing.remove();
                 const toast = document.createElement('div');
                 toast.id = 'table-filter-toast';
-                toast.textContent = 'Table Filter closed.';
+                toast.textContent = removedToastText;
                 Object.assign(toast.style, {
                   position: 'fixed',
                   top: '14px',

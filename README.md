@@ -1,57 +1,26 @@
 # Table Filter (Chrome Extension)
 
-**Table Filter** is a Chrome extension that adds in-page text filtering for long, paginated album lists.
+**Table Filter** is a Chrome extension for filtering table rows directly on the current page.
 
-It currently supports Facebook photo albums, where you can try it right now. You can also try it on our test page: [Table Filter Playground](https://table-filter.stansult.com).
-
-## Why
-
-On long album lists, browser page search (`Cmd/Ctrl + F`) only works on albums currently loaded in the DOM.
-Table Filter is designed to make finding albums faster by adding filtering controls directly in the page flow.
+Current first feature:
+- Hide rows where a specific column has a specific value.
 
 ## How It Works
 
-- Click the extension icon to open/close the in-page Table Filter panel.
-- Type a query to filter loaded albums by title.
-- Click `Auto-load` to keep loading additional album batches, then `Stop` to stop.
-- Click `Rescan` to re-read albums already present in the DOM.
-- Press `Esc` while focused in the filter input to close the panel.
+- Click the extension icon to open the in-page Table Filter panel.
+- Select which table to target.
+- Select which column to evaluate.
+- Enter a value.
+- Rows with an exact (case-insensitive) match in that column are hidden.
+- Use `Clear` to reset hidden rows.
 
-### Query Behavior
+## Current Scope
 
-- Unquoted query: split into words, all words must appear in title (order-independent).
-- Quoted query (`"..."` or `'...'`): exact phrase match in title.
-
-Example:
-- `my birthday` matches titles that contain both words anywhere.
-- `"my birthday"` matches titles that contain that exact phrase.
-
-### While Filtering Is Active
-
-- An inline notice appears near the Albums area (`Table Filter: active...`).
-- Newly loaded non-matching cards may briefly appear dim before being hidden.
-- While `Auto-load` is active, the panel shows a warning that page scroll/jumps may occur.
-
-## Product Direction
-
-### Current Support
-
-- Facebook album pages (`https://www.facebook.com/<user>/photos_albums`) - first PoC target
-
-### Principles
-
-- Generic architecture for site-specific adapters
-- Facebook support first
-- Additional sites can be added over time when they need the same capability
+- Works on pages that contain one or more HTML `<table>` elements.
+- Supports multiple tables on the same page.
+- This is the first step toward broader table filtering/sorting features.
 
 ## How to Install
-
-### Public version
-
-Install public version from Chrome Web Store:
-<a href="https://chromewebstore.google.com/detail/hflbafejehpoclienjonceojnnlckahm"><img src="icon.svg" width="15" hspace="6" alt="Table Filter extension in Chrome Web Store">Table Filter</a>.
-
-The Web Store listing may lag behind the latest code due to review time.
 
 ### Development mode
 
@@ -61,18 +30,12 @@ The Web Store listing may lag behind the latest code due to review time.
 4. Click **Load unpacked**.
 5. Select the project folder.
 
-#### Packaging for Chrome Web Store
+## Packaging
 
 - Create upload zip: `npm run package`
 - Bump patch + package: `npm run package:patch`
 
-#### Table Filter Playground
-
-Use [Table Filter Playground](https://table-filter.stansult.com) to test long-list and auto-load behavior locally.
-
 ## Notes
 
-- Table Filter is not affiliated with or endorsed by Meta/Facebook.
-- This project focuses on user-triggered, in-browser filtering workflows.
-- There is currently no options page; behavior is controlled from the in-page panel.
+- This project focuses on user-triggered, in-browser table filtering.
 - Privacy policy: [`PRIVACY.md`](PRIVACY.md)

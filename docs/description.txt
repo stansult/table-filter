@@ -1,39 +1,21 @@
-Table Filter adds in-page text filtering for long, paginated album lists.
+Table Filter adds in-page filtering controls for HTML tables.
 
-Chrome Web Store: https://chromewebstore.google.com/detail/hflbafejehpoclienjonceojnnlckahm
-
-Why it helps:
-- Large album lists are hard to navigate
-- Browser Find (Cmd/Ctrl + F) only works for content currently loaded
-- Table Filter is built to make album discovery faster in long lists
+Current feature:
+- Hide rows when a selected column equals a selected value (exact match, case-insensitive)
 
 How it works:
-- Click the extension icon to open/close the in-page Table Filter panel
-- Type a query to filter loaded albums by title
-- Click Auto-load to keep loading additional album batches, then Stop to stop
-- Click Rescan to re-read albums already present in the page DOM
-- Press Esc in the filter input to close the panel
+- Open the Table Filter panel from the extension action
+- Choose the table
+- Choose the column
+- Enter the value to hide
+- Matching rows are hidden immediately
+- Clear restores all rows
 
-Query behavior:
-- Unquoted query: split into words, all words must appear in title (order-independent)
-- Quoted query ("..." or '...'): exact phrase match in title
-
-While filtering is active:
-- An inline notice appears near the Albums area ("Table Filter: active...")
-- Newly loaded non-matching cards may briefly appear dim before being hidden
-- While Auto-load is active, the panel warns that page scroll/jumps may occur
-
-Product direction:
-- Current support: Facebook album pages (first proof of concept target)
-- Generic architecture for site-specific adapters
-- Facebook support first, with room to add more supported sites over time
-- User-triggered filtering workflow in the browser
-
-There is currently no options page; behavior is controlled from the in-page panel.
+Current scope:
+- Works on pages with one or more HTML table elements
+- Handles multiple tables on one page
+- Runs fully in browser on the active page
 
 Privacy:
-- Album content is processed locally in your browser to provide filtering.
+- Table content is processed locally in your browser.
 - No user data is transmitted to our servers.
-- No user data is sold or shared with third parties.
-
-Table Filter is not affiliated with or endorsed by Meta/Facebook.

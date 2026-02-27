@@ -1,3 +1,9 @@
+const RUN_ACTION = 'run';
+const PANEL_ID = 'table-filter-panel';
+const STYLE_ID = 'table-filter-style';
+const HIDDEN_CLASS = 'table-filter-row-hidden';
+const APP_KEY = '__tableFilterApp';
+
 const runButton = document.getElementById('run');
 
 function getActiveTab(callback) {
@@ -18,12 +24,13 @@ function closeInjectedPanelIfOpen(tabId, callback) {
       func: () => {
         const panelId = 'table-filter-panel';
         const styleId = 'table-filter-style';
-        const hiddenClass = 'table-filter-card-hidden';
+        const hiddenClass = 'table-filter-row-hidden';
+        const appKey = '__tableFilterApp';
 
-        const app = window.__albumFilterApp;
+        const app = window[appKey];
         if (app && typeof app.destroy === 'function') {
           app.destroy();
-          delete window.__albumFilterApp;
+          delete window[appKey];
           return true;
         }
 
@@ -36,7 +43,7 @@ function closeInjectedPanelIfOpen(tabId, callback) {
         document.querySelectorAll(`.${hiddenClass}`).forEach(node => {
           node.classList.remove(hiddenClass);
         });
-        delete window.__albumFilterApp;
+        delete window[appKey];
         return true;
       }
     },
@@ -58,7 +65,7 @@ getActiveTab(tabId => {
 
 runButton.addEventListener('click', () => {
   getActiveTab(tabId => {
-    chrome.runtime.sendMessage({ action: 'run', tabId }, () => {
+    chrome.runtime.sendMessage({ action: RUN_ACTION, tabId }, () => {
       window.close();
     });
   });
