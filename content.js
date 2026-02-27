@@ -923,6 +923,9 @@
 
           const indexTd = document.createElement('td');
           if (indexCellClassName) indexTd.className = indexCellClassName;
+          indexTd.style.paddingTop = '0.6rem';
+          indexTd.style.paddingBottom = '0.6rem';
+          indexTd.style.lineHeight = '1.25';
           indexTd.textContent = String(rowIndex + 1);
           tr.appendChild(indexTd);
 
@@ -930,6 +933,11 @@
             const td = document.createElement('td');
             const cellClassName = cellClassNames[i] || defaultCellClassName;
             if (cellClassName) td.className = cellClassName;
+            if (i !== 0) {
+              td.style.paddingTop = '0.6rem';
+              td.style.paddingBottom = '0.6rem';
+              td.style.lineHeight = '1.25';
+            }
             const text = entry.cells[i] || '';
 
             if (i === 0 && entry.imageSrc) {
@@ -952,6 +960,7 @@
             } else if (i === 1 && entry.href) {
               const link = document.createElement('a');
               link.href = entry.href;
+              link.style.lineHeight = '1.25';
               link.textContent = text || '(untitled)';
               td.appendChild(link);
             } else {
