@@ -439,6 +439,14 @@
     const toolbarRow = host.parentElement;
     const hostChildren = Array.from(host.children);
     const hostChildDisplays = hostChildren.map(node => node.style.display);
+    const toolbarStickyState = toolbarRow ? {
+      position: toolbarRow.style.position,
+      top: toolbarRow.style.top,
+      zIndex: toolbarRow.style.zIndex,
+      background: toolbarRow.style.background,
+      paddingTop: toolbarRow.style.paddingTop,
+      paddingBottom: toolbarRow.style.paddingBottom
+    } : null;
     const rightPane = toolbarRow
       ? Array.from(toolbarRow.children).find(child => child !== host) || null
       : null;
@@ -479,9 +487,34 @@
     const sortCleanup = [];
     let syntheticThead = null;
     const headerState = new Map();
+    let floatingHeaderWrap = null;
+    let floatingThead = null;
+    const floatingHeaderState = new Map();
+    const stickySurface = toolbarRow?.closest('.bg-background-200') || toolbarRow;
+    const stickySurfaceColor = stickySurface ? window.getComputedStyle(stickySurface).backgroundColor : '';
+    const stickyHeaderBackground =
+      stickySurfaceColor && stickySurfaceColor !== 'rgba(0, 0, 0, 0)' && stickySurfaceColor !== 'transparent'
+        ? stickySurfaceColor
+        : 'rgb(226, 232, 240)';
 
     function getDatasetKey() {
       return `${window.location.pathname}${window.location.search}`;
+    }
+
+    function getTopNavHeight() {
+      const fixedTop = document.querySelector('body > div > div.fixed.inset-x-0.top-0');
+      if (!fixedTop) return 0;
+      const rect = fixedTop.getBoundingClientRect();
+      return Math.max(0, Math.round(rect.height));
+    }
+
+    function getToolbarStickyTop() {
+      return getTopNavHeight();
+    }
+
+    function getHeaderStickyTop() {
+      if (!toolbarRow) return getTopNavHeight();
+      return getTopNavHeight() + Math.round(toolbarRow.getBoundingClientRect().height);
     }
 
     function setControlsDisabled(disabled) {
@@ -530,6 +563,106 @@
         heroLayout.style.paddingTop = heroState.layoutPaddingTop;
         heroLayout.style.paddingBottom = heroState.layoutPaddingBottom;
       }
+    }
+
+    function applyToolbarSticky() {
+      if (!toolbarRow) return;
+      toolbarRow.style.position = 'sticky';
+      toolbarRow.style.top = `${getToolbarStickyTop()}px`;
+      toolbarRow.style.zIndex = '30';
+      if (stickySurfaceColor && stickySurfaceColor !== 'rgba(0, 0, 0, 0)' && stickySurfaceColor !== 'transparent') {
+        toolbarRow.style.background = stickySurfaceColor;
+      }
+      toolbarRow.style.paddingTop = '0.25rem';
+      toolbarRow.style.paddingBottom = '0.25rem';
+    }
+
+    function restoreToolbarSticky() {
+      if (!toolbarRow || !toolbarStickyState) return;
+      toolbarRow.style.position = toolbarStickyState.position;
+      toolbarRow.style.top = toolbarStickyState.top;
+      toolbarRow.style.zIndex = toolbarStickyState.zIndex;
+      toolbarRow.style.background = toolbarStickyState.background;
+      toolbarRow.style.paddingTop = toolbarStickyState.paddingTop;
+      toolbarRow.style.paddingBottom = toolbarStickyState.paddingBottom;
+    }
+
+    function removeFloatingHeader() {
+      if (floatingHeaderWrap && floatingHeaderWrap.parentNode) {
+        floatingHeaderWrap.remove();
+      }
+      floatingHeaderWrap = null;
+      floatingThead = null;
+    }
+
+    function syncFloatingHeader() {
+      if (!syntheticThead || !floatingHeaderWrap || !floatingThead) return;
+
+      const tableRect = table.getBoundingClientRect();
+      const headerRect = syntheticThead.getBoundingClientRect();
+      const stickyTop = getHeaderStickyTop();
+      const sourceRow = syntheticThead.rows?.[0];
+      const floatingRow = floatingThead.rows?.[0];
+      const floatingTable = floatingHeaderWrap.querySelector('table');
+
+      floatingHeaderWrap.style.top = `${stickyTop}px`;
+      floatingHeaderWrap.style.left = `${Math.round(tableRect.left)}px`;
+      floatingHeaderWrap.style.width = `${Math.round(tableRect.width)}px`;
+
+      if (floatingTable) {
+        floatingTable.style.width = `${Math.round(tableRect.width)}px`;
+      }
+
+      const sourceCells = Array.from(sourceRow?.cells || []);
+      const floatingCells = Array.from(floatingRow?.cells || []);
+      floatingCells.forEach((cell, index) => {
+        const sourceCell = sourceCells[index];
+        if (!sourceCell) return;
+        const width = Math.max(1, Math.round(sourceCell.getBoundingClientRect().width));
+        cell.style.width = `${width}px`;
+        cell.style.minWidth = `${width}px`;
+        cell.style.maxWidth = `${width}px`;
+        cell.style.background = stickyHeaderBackground;
+      });
+
+      const shouldShow =
+        tableRect.width > 0 &&
+        headerRect.top <= stickyTop &&
+        tableRect.bottom > stickyTop + headerRect.height;
+      floatingHeaderWrap.style.display = shouldShow ? 'block' : 'none';
+    }
+
+    function ensureFloatingHeader() {
+      if (!syntheticThead || floatingHeaderWrap) return;
+
+      floatingHeaderWrap = document.createElement('div');
+      floatingHeaderWrap.dataset.tfFloatingHeader = '1';
+      floatingHeaderWrap.style.position = 'fixed';
+      floatingHeaderWrap.style.left = '0';
+      floatingHeaderWrap.style.top = '0';
+      floatingHeaderWrap.style.zIndex = '25';
+      floatingHeaderWrap.style.display = 'none';
+      floatingHeaderWrap.style.overflow = 'hidden';
+      floatingHeaderWrap.style.boxSizing = 'border-box';
+      floatingHeaderWrap.style.background = stickyHeaderBackground;
+
+      const floatingTable = document.createElement('table');
+      floatingTable.className = table.className || '';
+      floatingTable.style.tableLayout = 'fixed';
+      floatingTable.style.margin = '0';
+      floatingTable.style.width = '100%';
+      floatingTable.style.background = stickyHeaderBackground;
+
+      floatingThead = syntheticThead.cloneNode(true);
+      floatingThead.querySelectorAll('[id]').forEach(node => {
+        node.removeAttribute('id');
+      });
+
+      floatingHeaderWrap.appendChild(floatingTable);
+      floatingTable.appendChild(floatingThead);
+      document.body.appendChild(floatingHeaderWrap);
+
+      syncFloatingHeader();
     }
 
     function resetCache() {
@@ -658,20 +791,21 @@
         syntheticThead.remove();
       }
       syntheticThead = null;
+      removeFloatingHeader();
+      floatingHeaderState.clear();
       if (originalThead) {
         originalThead.style.display = '';
       }
     }
 
-    function bindSortHandlers(headerCells) {
-      sortCleanup.splice(0, sortCleanup.length).forEach(unbind => unbind());
-      headerState.clear();
+    function registerSortHandlers(headerCells, targetState) {
+      targetState.clear();
       headerCells.forEach((header, index) => {
         const key = columnKeys[index];
         if (key === 'image') return;
 
         const marker = header.querySelector('.tf-sort-marker');
-        headerState.set(key, { header, marker });
+        targetState.set(key, { header, marker });
 
         const handleSort = event => {
           event.preventDefault();
@@ -697,6 +831,16 @@
           }
         });
       });
+    }
+
+    function bindSortHandlers(headerCells, floatingHeaderCells = []) {
+      sortCleanup.splice(0, sortCleanup.length).forEach(unbind => unbind());
+      headerState.clear();
+      floatingHeaderState.clear();
+      registerSortHandlers(headerCells, headerState);
+      if (floatingHeaderCells.length) {
+        registerSortHandlers(floatingHeaderCells, floatingHeaderState);
+      }
       updateSortIndicators();
     }
 
@@ -741,11 +885,16 @@
           }
         });
 
-        bindSortHandlers(Array.from(headerRow.cells || []).slice(1));
       }
 
       originalThead.style.display = 'none';
       table.insertBefore(syntheticThead, originalThead);
+      ensureFloatingHeader();
+
+      const syntheticHeaderCells = Array.from(headerRow?.cells || []).slice(1);
+      const floatingHeaderCells = Array.from(floatingThead?.rows?.[0]?.cells || []).slice(1);
+      bindSortHandlers(syntheticHeaderCells, floatingHeaderCells);
+      syncFloatingHeader();
     }
 
     function renderRows(rows) {
@@ -818,6 +967,7 @@
 
       originalTbody.style.display = 'none';
       originalTbody.insertAdjacentElement('afterend', syntheticTbody);
+      syncFloatingHeader();
     }
 
     function compareEntries(a, b, key) {
@@ -861,16 +1011,18 @@
     }
 
     function updateSortIndicators() {
-      headerState.forEach((value, key) => {
-        const isActive = state.sortKey === key;
-        const { header, marker } = value;
-        if (header) {
-          header.style.opacity = isActive ? '1' : '0.92';
-        }
-        if (marker) {
-          marker.textContent = !isActive ? '↕' : state.sortDir === 'desc' ? '↓' : '↑';
-          marker.style.opacity = isActive ? '1' : '0.75';
-        }
+      [headerState, floatingHeaderState].forEach(stateMap => {
+        stateMap.forEach((value, key) => {
+          const isActive = state.sortKey === key;
+          const { header, marker } = value;
+          if (header) {
+            header.style.opacity = isActive ? '1' : '0.92';
+          }
+          if (marker) {
+            marker.textContent = !isActive ? '↕' : state.sortDir === 'desc' ? '↓' : '↑';
+            marker.style.opacity = isActive ? '1' : '0.75';
+          }
+        });
       });
     }
 
@@ -1009,6 +1161,7 @@
       node.dataset.tfPrevDisplay = hostChildDisplays[index] || '';
     });
     applyHeroCollapse();
+    applyToolbarSticky();
     if (viewButton) {
       viewButton.style.display = 'none';
     }
@@ -1028,12 +1181,21 @@
     opSelect.addEventListener('change', applyLocalFilters);
     valueInput.addEventListener('input', applyLocalFilters);
 
-    const onDocumentClick = event => {
+    const onDocumentPointerDown = event => {
       if (!statusWrap.contains(event.target)) {
         statusMenu.style.display = 'none';
       }
     };
-    document.addEventListener('click', onDocumentClick);
+    const onWindowResize = () => {
+      applyToolbarSticky();
+      syncFloatingHeader();
+    };
+    const onWindowScroll = () => {
+      syncFloatingHeader();
+    };
+    document.addEventListener('pointerdown', onDocumentPointerDown, true);
+    window.addEventListener('resize', onWindowResize);
+    window.addEventListener('scroll', onWindowScroll, true);
 
     clearBtn.addEventListener('click', () => {
       valueInput.value = '';
@@ -1051,7 +1213,9 @@
     return {
       __version: APP_VERSION,
       destroy() {
-        document.removeEventListener('click', onDocumentClick);
+        document.removeEventListener('pointerdown', onDocumentPointerDown, true);
+        window.removeEventListener('resize', onWindowResize);
+        window.removeEventListener('scroll', onWindowScroll, true);
         stopScan({ restoreScroll: true });
         restoreOriginalHeader();
         restoreOriginalRows();
@@ -1068,6 +1232,7 @@
         if (viewButton) {
           viewButton.style.display = viewButtonDisplay;
         }
+        restoreToolbarSticky();
         restoreHeroLayout();
         const style = document.getElementById(STYLE_ID);
         if (style) style.remove();
