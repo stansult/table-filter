@@ -1,24 +1,29 @@
 # Table Filter (Chrome Extension)
 
-**Table Filter** is a Chrome extension for filtering table rows directly on the current page.
+**Table Filter** is a Chrome extension that takes over a page table locally after activation, scans all rows, and lets you filter and sort the resulting table in-browser.
 
-Current first feature:
-- Hide rows where a specific column has a specific value.
+Current implementation:
+- Scans virtualized table rows into a local cache.
+- Rebuilds the table as a local, fully visible result set.
+- Adds local controls for text search, status filtering, and numeric `Unwatched` filtering.
+- Adds local sorting for all visible columns except `Image`.
+- Keeps a `Rescan` action to rebuild from the current page state.
 
 ## How It Works
 
-- Click the extension icon to open the in-page Table Filter panel.
-- Select which table to target.
-- Select which column to evaluate.
-- Enter a value.
-- Rows with an exact (case-insensitive) match in that column are hidden.
-- Use `Clear` to reset hidden rows.
+- Configure visible columns on the page first (if the site supports that).
+- Click the extension icon.
+- Table Filter scans the full current table and builds a local copy.
+- While active, the extension replaces the page's filter controls with local controls.
+- Use local text search, multi-select `Status`, and numeric `Unwatched` filter controls.
+- Sort any visible non-image column using the local header controls.
+- Use `Rescan` to rebuild from the page's current dataset.
 
 ## Current Scope
 
-- Works on pages that contain one or more HTML `<table>` elements.
-- Supports multiple tables on the same page.
-- This is the first step toward broader table filtering/sorting features.
+- Currently tuned for sites that render data in HTML tables, including virtualized tables.
+- Current target workflow has been refined around `trackseries.tv/myshows`.
+- Column layout is fixed for the active session based on the columns visible when the extension is activated.
 
 ## How to Install
 
@@ -37,5 +42,7 @@ Current first feature:
 
 ## Notes
 
-- This project focuses on user-triggered, in-browser table filtering.
+- Table data is processed locally in your browser.
+- While active, Table Filter owns the visible table view for the current session.
+- To change the source column layout, turn the extension off, adjust the site's own column/view controls, then activate Table Filter again.
 - Privacy policy: [`PRIVACY.md`](PRIVACY.md)

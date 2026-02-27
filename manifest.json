@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Table Filter",
   "version": "0.1.4",
-  "description": "Filter HTML tables directly on the current page.",
+  "description": "Scan, filter, and sort HTML tables locally on the current page.",
   "permissions": [
     "activeTab",
     "scripting"

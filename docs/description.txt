@@ -1,20 +1,23 @@
-Table Filter adds in-page filtering controls for HTML tables.
+Table Filter scans the current page table into a local in-browser view so you can filter and sort it without relying on the site's own table UI.
 
-Current feature:
-- Hide rows when a selected column equals a selected value (exact match, case-insensitive)
+Current features:
+- Full-table scan for virtualized HTML tables
+- Local text search
+- Local multi-select Status filter
+- Local numeric Unwatched filter
+- Local sorting for all visible non-image columns
+- Rescan to rebuild from the page's current dataset
 
 How it works:
-- Open the Table Filter panel from the extension action
-- Choose the table
-- Choose the column
-- Enter the value to hide
-- Matching rows are hidden immediately
-- Clear restores all rows
+- Click the extension action
+- Table Filter scans the full current table
+- The extension replaces the table controls with local controls
+- Filtering and sorting then run on the local cached table
 
 Current scope:
-- Works on pages with one or more HTML table elements
-- Handles multiple tables on one page
-- Runs fully in browser on the active page
+- Works entirely in the browser on the active page
+- Designed for HTML tables, including virtualized table views
+- Current workflow is tuned for pages like trackseries.tv/myshows
 
 Privacy:
 - Table content is processed locally in your browser.
