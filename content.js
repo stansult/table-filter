@@ -412,6 +412,8 @@
       selectedStatuses: new Set()
     };
     const originalTbody = table.tBodies?.[0] || null;
+    const originalTableDisplay = table.style.display;
+    const originalTableLayout = table.style.tableLayout;
     let syntheticTbody = null;
     const firstBodyRow = originalTbody?.querySelector('tr');
     const rowClassName = firstBodyRow?.className || '';
@@ -421,6 +423,8 @@
     const originalThead = table.tHead || null;
     const headers = getHeaderCells(table);
     const columnCount = Math.max(headers.length, 1);
+    const sourceTableWidth = Math.round(table.getBoundingClientRect().width);
+    const sourceColumnWidths = headers.map(header => Math.round(header.getBoundingClientRect().width));
     const headerClassNames = headers.map(header => header.className || '');
     const defaultHeaderClassName = headerClassNames[0] || '';
     const indexHeaderClassName = headerClassNames[1] || defaultHeaderClassName;
@@ -486,6 +490,7 @@
     const controls = [searchInput, searchClearBtn, statusButton, opSelect, valueInput, clearBtn, rescanBtn];
     const sortCleanup = [];
     let syntheticThead = null;
+    let syntheticColgroup = null;
     const headerState = new Map();
     let floatingHeaderWrap = null;
     let floatingThead = null;
@@ -570,9 +575,7 @@
       toolbarRow.style.position = 'sticky';
       toolbarRow.style.top = `${getToolbarStickyTop()}px`;
       toolbarRow.style.zIndex = '30';
-      if (stickySurfaceColor && stickySurfaceColor !== 'rgba(0, 0, 0, 0)' && stickySurfaceColor !== 'transparent') {
-        toolbarRow.style.background = stickySurfaceColor;
-      }
+      toolbarRow.style.background = stickyHeaderBackground;
       toolbarRow.style.paddingTop = '0.25rem';
       toolbarRow.style.paddingBottom = '0.25rem';
     }
@@ -605,6 +608,10 @@
       const floatingRow = floatingThead.rows?.[0];
       const floatingTable = floatingHeaderWrap.querySelector('table');
 
+      floatingThead.style.background = stickyHeaderBackground;
+      if (floatingRow) {
+        floatingRow.style.background = stickyHeaderBackground;
+      }
       floatingHeaderWrap.style.top = `${stickyTop}px`;
       floatingHeaderWrap.style.left = `${Math.round(tableRect.left)}px`;
       floatingHeaderWrap.style.width = `${Math.round(tableRect.width)}px`;
@@ -649,6 +656,7 @@
       const floatingTable = document.createElement('table');
       floatingTable.className = table.className || '';
       floatingTable.style.tableLayout = 'fixed';
+      floatingTable.style.display = 'table';
       floatingTable.style.margin = '0';
       floatingTable.style.width = '100%';
       floatingTable.style.background = stickyHeaderBackground;
@@ -776,6 +784,8 @@
     }
 
     function restoreOriginalRows() {
+      table.style.display = originalTableDisplay;
+      table.style.tableLayout = originalTableLayout;
       if (originalTbody) {
         originalTbody.style.display = '';
       }
@@ -787,6 +797,10 @@
 
     function restoreOriginalHeader() {
       sortCleanup.splice(0, sortCleanup.length).forEach(unbind => unbind());
+      if (syntheticColgroup && syntheticColgroup.parentNode) {
+        syntheticColgroup.remove();
+      }
+      syntheticColgroup = null;
       if (syntheticThead && syntheticThead.parentNode) {
         syntheticThead.remove();
       }
@@ -844,6 +858,39 @@
       updateSortIndicators();
     }
 
+    function useStaticTableLayout(element, display) {
+      element.style.display = display;
+      element.style.position = 'static';
+      element.style.inset = 'auto';
+      element.style.gridColumn = 'auto';
+      element.style.gridRow = 'auto';
+      element.style.order = '0';
+      element.style.transform = 'none';
+    }
+
+    function ensureSyntheticColumns() {
+      if (syntheticColgroup) return;
+
+      const indexWidth = 56;
+      const availableWidth = Math.max(1, sourceTableWidth - indexWidth);
+      const totalSourceWidth = sourceColumnWidths.reduce((total, width) => total + width, 0) || 1;
+
+      syntheticColgroup = document.createElement('colgroup');
+      syntheticColgroup.dataset.tfSynthetic = '1';
+
+      const indexCol = document.createElement('col');
+      indexCol.style.width = `${indexWidth}px`;
+      syntheticColgroup.appendChild(indexCol);
+
+      sourceColumnWidths.forEach(width => {
+        const col = document.createElement('col');
+        col.style.width = `${Math.max(1, Math.round((width / totalSourceWidth) * availableWidth))}px`;
+        syntheticColgroup.appendChild(col);
+      });
+
+      table.insertBefore(syntheticColgroup, table.firstChild);
+    }
+
     function ensureSyntheticHeader() {
       if (!originalThead || syntheticThead) return;
       syntheticThead = originalThead.cloneNode(true);
@@ -857,6 +904,8 @@
 
       const headerRow = syntheticThead.rows?.[0];
       if (headerRow) {
+        useStaticTableLayout(syntheticThead, 'table-header-group');
+        useStaticTableLayout(headerRow, 'table-row');
         const blankHeader = document.createElement('th');
         if (indexHeaderClassName) blankHeader.className = indexHeaderClassName;
         blankHeader.textContent = '#';
@@ -864,7 +913,10 @@
         blankHeader.style.minWidth = '56px';
         headerRow.insertBefore(blankHeader, headerRow.firstChild);
 
-        Array.from(headerRow.cells || []).slice(1).forEach((header, index) => {
+        Array.from(headerRow.cells || []).forEach((header, headerIndex) => {
+          useStaticTableLayout(header, 'table-cell');
+          if (headerIndex === 0) return;
+          const index = headerIndex - 1;
           const key = columnKeys[index];
           if (key === 'image') return;
 
@@ -888,6 +940,7 @@
       }
 
       originalThead.style.display = 'none';
+      ensureSyntheticColumns();
       table.insertBefore(syntheticThead, originalThead);
       ensureFloatingHeader();
 
@@ -905,14 +958,20 @@
 
       syntheticTbody = document.createElement('tbody');
       syntheticTbody.dataset.tfSynthetic = '1';
-      syntheticTbody.className = originalTbody.className || '';
+      // The source tbody is a virtualizer viewport (`relative block` with a
+      // fixed height). Results are static rows, so they need normal table flow.
+      useStaticTableLayout(syntheticTbody, 'table-row-group');
+      syntheticTbody.style.height = 'auto';
+      syntheticTbody.style.contain = 'none';
 
       if (!rows.length) {
         const tr = document.createElement('tr');
         if (rowClassName) tr.className = rowClassName;
+        useStaticTableLayout(tr, 'table-row');
         const td = document.createElement('td');
         td.colSpan = columnCount + 1;
         if (indexCellClassName) td.className = indexCellClassName;
+        useStaticTableLayout(td, 'table-cell');
         td.textContent = 'No matching rows';
         tr.appendChild(td);
         syntheticTbody.appendChild(tr);
@@ -920,9 +979,12 @@
         rows.forEach((entry, rowIndex) => {
           const tr = document.createElement('tr');
           if (rowClassName) tr.className = rowClassName;
+          useStaticTableLayout(tr, 'table-row');
+          tr.style.height = 'auto';
 
           const indexTd = document.createElement('td');
           if (indexCellClassName) indexTd.className = indexCellClassName;
+          useStaticTableLayout(indexTd, 'table-cell');
           indexTd.style.paddingTop = '0.6rem';
           indexTd.style.paddingBottom = '0.6rem';
           indexTd.style.lineHeight = '1.25';
@@ -933,6 +995,7 @@
             const td = document.createElement('td');
             const cellClassName = cellClassNames[i] || defaultCellClassName;
             if (cellClassName) td.className = cellClassName;
+            useStaticTableLayout(td, 'table-cell');
             if (i !== 0) {
               td.style.paddingTop = '0.6rem';
               td.style.paddingBottom = '0.6rem';
@@ -976,6 +1039,10 @@
 
       originalTbody.style.display = 'none';
       originalTbody.insertAdjacentElement('afterend', syntheticTbody);
+      // TrackSeries uses a CSS grid for its virtualized source table. Static
+      // extension results need normal table layout so their rows get height.
+      table.style.display = 'table';
+      table.style.tableLayout = 'fixed';
       syncFloatingHeader();
     }
 
